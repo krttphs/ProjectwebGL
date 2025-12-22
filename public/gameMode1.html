@@ -534,6 +534,10 @@ public class Main {
       const output = document.getElementById("output");
       let timeout = null;
       runBtn.addEventListener("click", async () => {
+        if (!currentQuest) {
+            output.textContent = "⚠️ กรุณาสุ่มโจทย์ก่อน";
+            return;
+          }
         clearInterval(timeout);
         let dots = 0;
         timeout = setInterval(() => {
@@ -553,7 +557,7 @@ public class Main {
               body: JSON.stringify({
                 source_code: code,
                 language_id: lang,
-                stdin: currentQuest ? currentQuest.inputRun : "2",
+                stdin: currentQuest.inputRun,
               }),
             }
           );
