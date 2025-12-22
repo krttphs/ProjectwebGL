@@ -37,6 +37,18 @@ router.post("/login", async (req, res) => {
   res.json({ message: "เข้าสู่ระบบสำเร็จ", user: data.user });
 });
 
+router.get("/me", async(req,res)=>{
+  const token = req.cookies.token
+  const {data:{user}, error} = await supabase.auth.getUser(token)
+  if(error || !user){
+    return res.status(401).json({ error: "Token ไม่ถูกต้อง หรือหมดอายุ" });
+  }
+  res.json({
+    email: user.email,
+    id: user.id
+  })
+})
+
 router.post("/logout", (req, res) => {
     res.clearCookie("token"); // ลบ Cookie ออก
     res.json({ message: "ออกจากระบบแล้ว" });
