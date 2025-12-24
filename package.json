@@ -19,7 +19,9 @@
     "express": "^5.2.1"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
     "@types/cookie-parser": "^1.4.10",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "tailwindcss": "^4.1.18"
   }
 }
