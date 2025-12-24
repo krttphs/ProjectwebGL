@@ -51,7 +51,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/welcome",hasAuth,(req,res)=>{
-  res.sendFile("/welcome.html", {root: path.join(__dirname,"views")});
+  res.sendFile("welcome.html", {root: path.join(__dirname,"views")});
 })
 
 app.get("/index",requireAuth,(req,res)=>{
