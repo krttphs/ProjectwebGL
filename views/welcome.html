@@ -96,6 +96,17 @@
           color: white;
         }
       }
+      .expand{
+        animation: expand-animate 0.5s ease-in-out forwards
+      }
+      @keyframes expand-animate{
+        from{
+          transform: scale(0);
+        }
+        to{
+          transform: scale(1);
+        }
+      }
     </style>
   </head>
   <body class="bg-gradient-to-t from-cyan-500 via-purple-500 to-cyan-500 animate-bg min-h-screen">
@@ -152,11 +163,18 @@
           </div>
           
           <div class="flex justify-between">
-            <button type="submit" class="bg-green-500 text-white rounded-xl px-4 py-2 hover:bg-green-700 hover:scale-105 transition-all">Confirm</button>
+            <button type="button" onclick="nextToUsername()"class="bg-green-500 text-white rounded-xl px-4 py-2 hover:bg-green-700 hover:scale-105 transition-all">Next</button>
             <button type="button" onclick="cancelRegister()" class="bg-red-200 text-black rounded-xl px-4 py-2 hover:bg-red-400 hover:scale-105 transition-all">Cancel</button>
           </div>
         </form>
-
+        <form id="usernameForm" class="flex-col px-8 hidden">
+          <h2 class="text-white text-xl mb-4 text-center">What should we call you?</h2>
+          <input id="username" type="text" placeholder="A jakaraka? THAT'S WEIRD" class="bg-white text-black rounded-md pl-2 h-8" required>
+          <div class="flex justify-center gap-[10px] mt-10">
+            <button type="submit" class="bg-green-500 text-white rounded-xl px-4 py-2 hover:bg-green-700 hover:scale-105 transition-all">Confirm</button>
+            <button type="button" onclick="backToRegist()" class="bg-red-200 text-black rounded-xl px-4 py-2 hover:bg-red-400 hover:scale-105 transition-all">Back</button>
+          </div>
+        </form>
       </div>
     </main>
 
@@ -201,19 +219,94 @@
       function showRegister() {
         document.getElementById("loginForm").classList.add("hidden");
         document.getElementById("loginForm").classList.remove("flex");
+
         document.getElementById("registerForm").classList.remove("hidden");
+        document.getElementById("registerForm").classList.remove("expand");
         document.getElementById("registerForm").classList.add("flex");
+        requestAnimationFrame(()=>{
+          document.getElementById("registerForm").classList.add("expand");
+        })
         document.getElementById("welcomeSign").textContent = "JOIN US!";
       }
 
       function cancelRegister() {
         document.getElementById("registerForm").classList.add("hidden");
         document.getElementById("registerForm").classList.remove("flex");
+
         document.getElementById("loginForm").classList.remove("hidden");
+        document.getElementById("loginForm").classList.remove("expand");
         document.getElementById("loginForm").classList.add("flex");
+        requestAnimationFrame(()=>{
+          document.getElementById("loginForm").classList.add("expand");
+        })
         document.getElementById("welcomeSign").innerHTML = `<span>W</span><span>E</span><span>L</span><span>C</span><span>O</span><span>M</span><span>E</span><span>!</span>`;
       }
 
+      function successfullyRegistered(){
+        document.getElementById("usernameForm").classList.remove("flex")
+        document.getElementById("usernameForm").classList.add("hidden")
+
+        document.getElementById("loginForm").classList.remove("hidden")
+        document.getElementById("loginForm").classList.add("flex")
+        document.getElementById("loginForm").classList.remove("expand")
+        requestAnimationFrame(()=>{
+          document.getElementById("loginForm").classList.add("expand")
+        })
+        document.getElementById("welcomeSign").innerHTML = `<span>W</span><span>E</span><span>L</span><span>C</span><span>O</span><span>M</span><span>E</span><span>!</span>`;
+      }
+
+      let tempEmail = ""
+      let tempPassword = ""
+      function nextToUsername(){
+        const email = document.getElementById("emailRegist").value.trim();
+        const password = document.getElementById("passwordRegist").value.trim();
+        const confirmPassword = document.getElementById("confirmpasswordRegist").value.trim();
+        const emailRex = /^(?!\.)(?!.*\.\.)[a-zA-Z0-9._%+-]+(?<!\.)@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+        if(!email){
+          alert("กรุณากรอก Email");
+          return;
+        }
+        else if(!emailRex.test(email)){
+          alert("รูปแบบ Email ไม่ถูกต้อง")
+          return
+        }
+        if(!password){
+          alert("กรอกรุณากรอก Password")
+          return
+        }
+        else if(password !== confirmPassword) {
+            alert("รหัสผ่านไม่ตรงกัน");
+            return;
+        }
+        tempEmail = email
+        tempPassword = password
+
+        document.getElementById("registerForm").classList.remove("flex")
+        document.getElementById("registerForm").classList.add("hidden")
+
+        document.getElementById("usernameForm").classList.remove("expand")
+        document.getElementById("usernameForm").classList.remove("hidden")
+        requestAnimationFrame(()=>{
+          document.getElementById("usernameForm").classList.add("flex")
+          document.getElementById("usernameForm").classList.add("expand") 
+        })
+      }
+      function backToRegist(){
+        const registerForm = document.getElementById("registerForm")
+        const usernameForm = document.getElementById("usernameForm")
+        
+        usernameForm.classList.remove("flex")
+        usernameForm.classList.add("hidden")
+
+        registerForm.classList.remove("expand")
+        registerForm.classList.remove("hidden")
+        requestAnimationFrame(()=>{
+          registerForm.classList.add("flex")
+          registerForm.classList.add("expand")
+        })
+        
+      }
       // --- API Logic ---
       //Login
       document.getElementById("loginForm").addEventListener("submit", async (e) => {
@@ -242,28 +335,24 @@
       });
 
       // Register
-      document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      document.getElementById("usernameForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        const email = document.getElementById("emailRegist").value.trim();
-        const password = document.getElementById("passwordRegist").value.trim();
-        const confirmPassword = document.getElementById("confirmpasswordRegist").value.trim();
-
-        if(password !== confirmPassword) {
-            alert("รหัสผ่านไม่ตรงกัน");
-            return;
+        const username = document.getElementById("username").value.trim()
+        if(!tempEmail || !tempPassword || !username){
+          alert("กรุณากรอกข้อมูลให้ครบถ้วน")
+          return
         }
-
         try {
           const response = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ tempEmail, tempPassword,username }),
           });
           const result = await response.json();
 
           if (response.ok) {
             alert("สมัครสมาชิกสำเร็จ!");
-            cancelRegister();
+            successfullyRegistered()
           } else {
             alert("สมัครสมาชิกไม่สำเร็จ: " + result.error);
           }

@@ -24,7 +24,7 @@
   </head>
   <body class="">
     <nav class="flex justify-between m-4 h-[50px] w-auto rounded-xl bg-purple-400 items-center">
-        <h2 id="userEmail" class="ml-4">Loading..</h2>
+        <h2 id="username" class="ml-4">Loading..</h2>
         <div>
             <span id="coinDisplay">Coins: </span>
             <button class="px-4 py-2 bg-blue-200 rounded-xl mr-4" onclick="logout()">
@@ -46,7 +46,7 @@
                 const data = await response.json()
 
                 if(response.ok){
-                    document.getElementById("userEmail").textContent = data.email
+                    document.getElementById("username").textContent = data.username
                 }else{
                     window.location.reload()
                 }

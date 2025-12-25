@@ -4,19 +4,29 @@ const supabase = require("../config/supabaseClient");
 
 // Route Register
 router.post("/register", async (req, res) => {
-  const { email, password } = req.body; // Supabase ใช้ email เป็นหลัก
-  console.log(JSON.stringify(email));
-  if (!email || !password) {
-    return res.status(400).json({ error: "กรุณากรอก Email และ Password" });
+  const { tempEmail, tempPassword, username } = req.body; // Supabase ใช้ email เป็นหลัก
+  if (!tempEmail || !tempPassword || !username) {
+    return res.status(400).json({ error: "กรุณากรอก Email และ Password และ username ให้ครบถ้วน" });
   }
 
   const { data, error } = await supabase.auth.signUp({
-    email: email,
-    password: password,
+    email: tempEmail,
+    password: tempPassword,
+    options: {
+      //ส่ง username เข้าไปเป็น data (Metadata)
+      data: {
+        username: username 
+      }
+    }
   });
 
-  if (error) return res.status(400).json({ error: error.message });
-  res.status(201).json({ message: "สมัครสมาชิกสำเร็จ", user: data.user });
+  // if (error) return res.status(400).json({ error: error.message });
+  if(data.user){
+    res.status(201).json({ message: "สมัครสมาชิกสำเร็จ", user: data.user });
+  } else {
+    res.status(400).json({ error: "สมัครไม่สำเร็จ Username ซ้ำ" });
+  }
+  
 });
 
 // Route Login
@@ -45,7 +55,8 @@ router.get("/me", async(req,res)=>{
   }
   res.json({
     email: user.email,
-    id: user.id
+    id: user.id,
+    username: user.user_metadata.username || "Guest"
   })
 })
 

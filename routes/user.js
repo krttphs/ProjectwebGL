@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const supabase = require("../config/supabaseClient");
 
-// Middleware: เช็คว่า Login หรือยัง (เอามาจาก Route /me ของคุณ)
+// Middleware: เช็คว่า Login หรือยัง
 const checkAuth = async (req, res, next) => {
   const token = req.cookies.token;
   if (!token) return res.status(401).json({ error: "No token provided" });
@@ -22,7 +22,7 @@ router.post("/add-coins", checkAuth, async (req, res) => {
   const { amount } = req.body;
   const userId = req.user.id; // ได้มาจาก Middleware ข้างบน
 
-  // เรียกใช้ Function ใน Supabase ที่เราสร้างไว้ในขั้นตอนที่ 1
+  // เรียกใช้ Function add_coins ใน Supabase 
   const { error } = await supabase.rpc("add_coins", { 
     user_id: userId, 
     amount: amount 
@@ -30,14 +30,14 @@ router.post("/add-coins", checkAuth, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // (Optional) ดึงยอดเงินล่าสุดส่งกลับไปอัปเดตหน้าเว็บ
+  //ดึงยอดเงินล่าสุดส่งกลับไปอัปเดตหน้าเว็บ
   const { data: userData } = await supabase
     .from("users")
     .select("coins")
     .eq("id", userId)
     .single();
 
-  res.json({ message: "เติมเงินสำเร็จ", newBalance: userData?.coins || 0 });
+  res.json({ message: "ได้รับเหรียญแล้ว", newBalance: userData?.coins || 0 });
 });
 
 // API: ดูยอดเงิน เอาไว้โชว์หน้า Menu
