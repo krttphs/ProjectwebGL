@@ -20,11 +20,11 @@ router.post("/register", async (req, res) => {
     }
   });
 
-  // if (error) return res.status(400).json({ error: error.message });
+  if (error && error.message !== "Database error saving new user") return res.status(400).json({ error: error.message });
   if(data.user){
     res.status(201).json({ message: "สมัครสมาชิกสำเร็จ", user: data.user });
   } else {
-    res.status(400).json({ error: "สมัครไม่สำเร็จ Username ซ้ำ" });
+    res.status(400).json({ error: "Username ซ้ำ" });
   }
   
 });
