@@ -9,6 +9,16 @@ router.post("/register", async (req, res) => {
     return res.status(400).json({ error: "กรุณากรอก Email และ Password และ username ให้ครบถ้วน" });
   }
 
+  const {data: existing } = await supabase
+  .from("users")
+  .select("id")
+  .eq("username", username)
+  .single();
+
+  if(existing){
+    return res.status(400).json({error: "Username ซ้ำ"});
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email: tempEmail,
     password: tempPassword,
@@ -19,14 +29,16 @@ router.post("/register", async (req, res) => {
       }
     }
   });
+  await supabase.from("users").insert({
+      id: data.user.id,
+      email: tempEmail,
+      username: username,
+      coins: 0
+    });
 
-  if (error && error.message !== "Database error saving new user") return res.status(400).json({ error: error.message });
-  if(data.user){
-    res.status(201).json({ message: "สมัครสมาชิกสำเร็จ", user: data.user });
-  } else {
-    res.status(400).json({ error: "Username ซ้ำ" });
-  }
-  
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.status(201).json({ message: "สมัครสมาชิกสำเร็จ", user: data.user });
 });
 
 // Route Login
@@ -47,6 +59,7 @@ router.post("/login", async (req, res) => {
   res.json({ message: "เข้าสู่ระบบสำเร็จ", user: data.user });
 });
 
+//route สำหรับไว้ดึง email id username
 router.get("/me", async(req,res)=>{
   const token = req.cookies.token
   const {data:{user}, error} = await supabase.auth.getUser(token)
