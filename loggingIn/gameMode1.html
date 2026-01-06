@@ -666,10 +666,9 @@ public class Main {
         .getElementById("randomQuestBtn")
         .addEventListener("click", async () => {
           try {
-            // 1. ดึงค่าความยากจาก Dropdown มาเก็บใส่ตัวแปรก่อน
+            // ดึงค่าความยากจาก Dropdown มาเก็บใส่ตัวแปรก่อน
             const difficultyLevel = document.getElementById("difficulty").value;
 
-            // 2. แก้ URL ให้ใช้ Backticks (`) เพื่อใส่ค่าตัวแปรลงไปได้
             let res = await fetch(`/api/quests/random/${difficultyLevel}`);
 
             if (!res.ok) {
@@ -678,9 +677,7 @@ public class Main {
 
             let quest = await res.json();
             currentQuest = quest;
-
-            // 3. (สำคัญ) แปลงชื่อ Key ให้ตรงกับที่ปุ่ม Run/Submit เรียกใช้
-            // ใน Database น่าจะเป็น snake_case (input_run) แต่ปุ่ม Submit เรียก inputRun
+          
             currentQuest.inputRun = quest.input_run;
             currentQuest.inputSubmit = quest.input_submit;
             currentQuest.expectedOutput = quest.expected_output;
@@ -693,7 +690,7 @@ public class Main {
             output.textContent +=
               "ผลลัพธ์ที่ต้องการ:\n" + quest.show_expect_output;
           } catch (err) {
-            console.error(err); // ดู error ใน console
+            console.error(err);
             output.textContent = "สุ่มโจทย์ไม่สำเร็จ: " + err.message;
           }
         });
