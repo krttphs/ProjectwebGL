@@ -3,13 +3,15 @@ const env = require("dotenv");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 
+env.config();
+
 const questRoutes = require("./routes/quests");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
+const friendsRoutes = require("./routes/friends")
 
 const app = express();
 
-env.config();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -21,7 +23,7 @@ const requireAuth = (req,res,next) =>{
   const token = req.cookies.token;
 
   if(!token){
-    return res.redirect("/welcome");
+    return res.redirect("/login");
   }
   next();
 }
@@ -38,6 +40,7 @@ const hasAuth = (req,res,next) =>{
 app.use("/api", questRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/friends",friendsRoutes);
 
 // Frontend Route
 app.get("/", (req, res) => {
@@ -45,12 +48,12 @@ app.get("/", (req, res) => {
   if (token) {
     res.sendFile("index.html", {root: path.join(__dirname, "loggingIn")}); 
   } else {
-    res.sendFile("welcome.html", {root: path.join(__dirname, "views")});
+    res.sendFile("login.html", {root: path.join(__dirname, "views")});
   }
 });
 
-app.get("/welcome",hasAuth,(req,res)=>{
-  res.sendFile("welcome.html", {root: path.join(__dirname,"views")});
+app.get("/login",hasAuth,(req,res)=>{
+  res.sendFile("login.html", {root: path.join(__dirname,"views")});
 })
 
 app.get("/index",requireAuth,(req,res)=>{

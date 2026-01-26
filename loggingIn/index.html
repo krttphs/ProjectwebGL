@@ -1,97 +1,778 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Menu</title>
+    <title>Game Lobby</title>
     <link rel="icon" type="image/png" href="/img/webIcon.png" />
-    <link rel="stylesheet" href="/css/output.css">
+    <link rel="stylesheet" href="/css/output.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=BBH+Bogle&display=swap"
       rel="stylesheet"
     />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
     <style>
-        body{
-            font-family: "BBH Bogle", sans-serif;
+      body {
+        font-family: "BBH Bogle", sans-serif;
+        overflow: hidden;
+        background-color: #ffffff;
+      }
+
+      .bg-grid {
+        background-image:
+          linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: moveGrid 10s linear infinite;
+      }
+      @keyframes moveGrid {
+        0% {
+          transform: perspective(500px) rotateX(45deg) translateY(0);
         }
-        .mainMenu{
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 90vh;
+        100% {
+          transform: perspective(500px) rotateX(45deg) translateY(50px);
         }
+      }
+
+      /* Glassmorphism Effect */
+      .glass-panel {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      }
+
+      /* Hover Card Effect */
+      .game-card {
+        transition: all 0.3s ease;
+      }
+      .game-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+        border-color: rgba(59, 130, 246, 0.8);
+      }
+      .game-menu {
+        transition: all 0.3s;
+      }
+      .game-menu:hover {
+        transform: translateY(-10px);
+      }
+      .open-game-menu {
+        animation: open-game-menu-animation 0.5s forwards;
+      }
+      @keyframes open-game-menu-animation {
+        from {
+          opacity: 0;
+          transform: translateY(500px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0px);
+        }
+      }
+      .close-game-menu {
+        animation: close-game-menu-animation 0.5s forwards;
+      }
+      @keyframes close-game-menu-animation {
+        from {
+          opacity: 1;
+          transform: translateY(0px);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(500px);
+        }
+      }
+      .spin-globe-setting-icon {
+        transform-origin: center;
+        animation: spin-globe-setting-icon-animation 0.5s forwards;
+      }
+      @keyframes spin-globe-setting-icon-animation {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(-90deg);
+        }
+      }
+      .spin-back-globe-setting-icon {
+        transform-origin: center;
+        animation: spin-back-globe-setting-icon-animation 0.5s forwards;
+      }
+      @keyframes spin-back-globe-setting-icon-animation {
+        from {
+          transform: rotate(-90deg);
+        }
+        to {
+          transform: rotate(0deg);
+        }
+      }
     </style>
   </head>
-  <body class="">
-    <nav class="flex justify-between m-4 h-[50px] w-auto rounded-xl bg-purple-400 items-center">
-        <h2 id="username" class="ml-4">Loading..</h2>
-        <div>
-            <span id="coinDisplay">Coins: </span>
-            <button class="px-4 py-2 bg-blue-200 rounded-xl mr-4" onclick="logout()">
-                Logout
+  <body class="text-white h-screen w-screen relative">
+    <!-- <div class="w-25 h-2 bg-black absolute mx-auto z-10 rounded-xl">
+    </div> -->
+    <!-- <div id="unity-bg-placeholder" class="absolute inset-0 z-0 bg-gradient-to-b from-slate-900 via-slate-800 to-black">
+        <div class="absolute inset-0 bg-grid h-[200%] w-full origin-top"></div>
+    </div> -->
+    <div class="relative z-10 flex flex-col h-full justify-between p-6">
+      <nav
+        class="flex justify-between items-center glass-panel rounded-2xl px-6 py-3"
+      >
+        <div class="flex items-center gap-4">
+          <div
+            class="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-xl font-bold border-2 border-white shadow-lg"
+          >
+            <i class="fa-solid fa-user-astronaut"></i>
+          </div>
+          <div>
+            <h2
+              id="username"
+              class="text-xl font-bold tracking-wider text-cyan-300 drop-shadow-md"
+            >
+              Loading...
+            </h2>
+            <div
+              class="text-xs text-gray-300 bg-black/40 px-2 py-0.5 rounded-md inline-block"
+            >
+              LEVEL 1
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-6">
+          <div
+            class="flex items-center gap-2 bg-black/40 px-4 py-2 rounded-xl border border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]"
+          >
+            <i class="fa-solid fa-coins text-yellow-400"></i>
+            <span
+              id="coinDisplay"
+              class="text-yellow-400 font-mono text-lg font-bold"
+              >0</span
+            >
+          </div>
+
+          <!-- <button
+            onclick="logout()"
+            class="group relative px-6 py-2 bg-red-500/20 rounded-xl border border-red-500/50 transition-all duration-300 overflow-hidden"
+          >
+            <span class="relative z-10 group-hover:text-white font-bold"
+              >LOGOUT</span
+            >
+            <div
+              class="absolute inset-0 bg-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"
+            ></div>
+          </button> -->
+        </div>
+      </nav>
+
+      <main
+        id="gameMenu"
+        class="flex-grow flex items-center justify-center gap-8 w-full hidden"
+      >
+        <div
+          onclick="goToGameMode1()"
+          class="game-card cursor-pointer group w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden"
+        >
+          <div
+            class="h-[60%] w-full bg-blue-900/50 rounded-2xl mb-4 relative overflow-hidden border border-white/10 group-hover:border-cyan-400/50 transition-colors"
+          >
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"
+            ></div>
+            <img
+              src="img/gamemode1.png"
+              alt="gamemode1 img"
+              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+            />
+            <div class="absolute bottom-4 left-4">
+              <span
+                class="bg-cyan-500 text-black text-xs font-bold px-2 py-1 rounded"
+                >EASY</span
+              >
+            </div>
+          </div>
+
+          <div class="text-left px-2">
+            <h3
+              class="text-3xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors"
+            >
+              FARM MONEY
+            </h3>
+            <p class="text-gray-400 text-sm mb-6">
+              Practice your logic with basic algorithms. Suitable for beginners.
+            </p>
+
+            <button
+              class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
+            >
+              <span>PLAY NOW</span>
+              <i class="fa-solid fa-play"></i>
             </button>
+          </div>
         </div>
-      
-    </nav>
-    <main class="mainMenu">
-        <div class="bg-blue-300 w-[500px] h-[400px] rounded-3xl border-[10px] border-gray-200 flex justify-center items-center flex-col">
-            <button onclick="goToGameMode1()" class="bg-blue-500 h-[50px] w-[200px] px-4 rounded-xl cursor-pointer">Gamemode 1</button>
-            <button class="bg-blue-500 h-[50px] w-[200px] px-4 mt-12 rounded-xl cursor-pointer">Gamemode 2</button>
+
+        <div
+          class="w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500 cursor-not-allowed"
+        >
+          <div
+            class="absolute inset-0 bg-black/60 z-10 flex flex-col justify-center items-center rounded-3xl"
+          >
+            <i class="fa-solid fa-lock text-4xl text-gray-500 mb-2"></i>
+            <span class="text-gray-400 font-bold">LOCKED</span>
+          </div>
+
+          <div
+            class="h-[60%] w-full bg-purple-900/50 rounded-2xl mb-4 relative overflow-hidden"
+          >
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3ubojS9d-R1ccYh9tbJTDyjU3u7qnSy-Qtw&s"
+              alt="Space"
+              class="w-full h-full object-cover"
+            />
+          </div>
+
+          <div class="text-left px-2">
+            <h3 class="text-3xl font-bold text-gray-300 mb-2">Hardcore mode</h3>
+            <p class="text-gray-500 text-sm mb-6">
+              Advanced challenge for true coders. Unlock at Level 5.
+            </p>
+
+            <button
+              disabled
+              class="w-full py-3 bg-gray-700 rounded-xl font-bold text-gray-400 cursor-not-allowed"
+            >
+              COMING SOON
+            </button>
+          </div>
         </div>
-    </main>
+      </main>
+      <div class="justify-between relative">
+        <div
+          onclick="openGameMenu()"
+          class="px-5 py-5 rounded-full mx-auto w-fit game-menu cursor-default text-center"
+        >
+          <h6 class="text-black">game menu</h6>
+          <div
+            class="glass-panel px-20 h-2 rounded-full w-fit mb-2 group"
+          ></div>
+        </div>
+        <div
+          id="globeWrapper"
+          data-state="closed"
+          class="fixed bottom-4 right-4 z-50 flex flex-col items-center gap-4 group mb-5 mr-5"
+        >
+          <div
+            class="flex flex-col gap-3 p-3 bg-black/60 backdrop-blur-md border border-white/20 rounded-full shadow-lg transition-all duration-300 ease-out origin-bottom translate-y-4 opacity-0 scale-75 pointer-events-none invisible group-data-[state=open]:opacity-100 group-data-[state=open]:scale-100 group-data-[state=open]:translate-y-0 group-data-[state=open]:pointer-events-auto group-data-[state=open]:visible"
+          >
+            <div class="relative">
+              <button
+                onclick="openFriendModal()"
+                class="w-10 h-10 rounded-full bg-blue-500/20 hover:bg-blue-500/80 text-white flex items-center justify-center transition-colors border border-blue-500/50"
+              >
+                <i class="fa-solid fa-user-group"></i>
+              </button>
+              <div
+                id="friendBadge"
+                class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full border border-black shadow-sm"
+              >
+                0
+              </div>
+            </div>
+            <button
+              class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+            >
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+
+            <button
+              class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+            >
+              <i class="fa-solid fa-music"></i>
+            </button>
+
+            <button
+              onclick="logout()"
+              class="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/80 text-white flex items-center justify-center transition-colors border border-red-500/50"
+            >
+              <i class="fa-solid fa-power-off"></i>
+            </button>
+          </div>
+
+          <div
+            onclick="openGlobeSettings()"
+            class="cursor-pointer w-16 h-16 rounded-full bg-black/40 backdrop-blur-sm transition-all duration-500 relative flex items-center justify-center border-2 /* Logic เส้นขอบหมุนๆ เดิมของคุณ ปรับมาใช้ group-data */ border-transparent group-data-[state=closed]:hover:border-dashed group-data-[state=closed]:hover:border-gray-400 group-data-[state=open]:border-dashed group-data-[state=open]:border-white group-data-[state=open]:rotate-180"
+          >
+            <img
+              src="img/webIcon.png"
+              class="w-full h-full object-contain p-1"
+            />
+          </div>
+        </div>
+      </div>
+      <div
+        id="friendModal"
+        class="hidden fixed inset-0 z-[100] bg-black/80 flex justify-center items-center opacity-0 transition-opacity duration-300"
+      >
+        <div
+          class="glass-panel w-[500px] h-[600px] rounded-3xl p-6 flex flex-col relative transform scale-90 transition-transform duration-300"
+          id="friendModalBox"
+        >
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-white tracking-wider">
+              <i class="fa-solid fa-users mr-3 text-cyan-400"></i>SOCIAL
+            </h2>
+            <button
+              onclick="closeFriendModal()"
+              class="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/80 text-white transition-colors flex items-center justify-center"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="flex gap-2 mb-4 bg-black/40 p-1 rounded-xl">
+            <button
+              onclick="switchTab('myFriends')"
+              id="tab-myFriends"
+              class="flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-cyan-600 text-white shadow-lg"
+            >
+              Friends
+            </button>
+            <button
+              onclick="switchTab('addFriend')"
+              id="tab-addFriend"
+              class="flex-1 py-2 rounded-lg text-sm font-bold text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+            >
+              Add Friend
+            </button>
+            <button
+              onclick="switchTab('requests')"
+              id="tab-requests"
+              class="flex-1 py-2 rounded-lg text-sm font-bold text-gray-400 hover:text-white hover:bg-white/10 transition-all relative"
+            >
+              Requests
+              <span
+                id="reqTabBadge"
+                class="hidden bg-red-500 text-white text-[9px] px-1.5 rounded-full absolute top-1 right-2"
+                >0</span
+              >
+            </button>
+          </div>
+
+          <div class="flex-grow overflow-hidden relative">
+            <div
+              id="content-myFriends"
+              class="absolute inset-0 overflow-y-auto pr-2 custom-scrollbar space-y-2"
+            >
+              <div class="text-center text-gray-500 mt-20">
+                Loading friends...
+              </div>
+            </div>
+
+            <div
+              id="content-addFriend"
+              class="absolute inset-0 hidden flex flex-col"
+            >
+              <div class="relative mb-4">
+                <input
+                  type="text"
+                  id="searchFriendInput"
+                  placeholder="Enter username..."
+                  class="w-full bg-black/50 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                />
+                <button
+                  onclick="searchUsers()"
+                  class="absolute right-2 top-2 w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center text-white hover:bg-cyan-500"
+                >
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+              </div>
+              <div
+                id="searchResultArea"
+                class="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-2"
+              >
+                <div class="text-center text-gray-500 mt-10">
+                  Search for new coding partners!
+                </div>
+              </div>
+            </div>
+
+            <div
+              id="content-requests"
+              class="absolute inset-0 overflow-y-auto pr-2 custom-scrollbar space-y-2 hidden"
+            >
+              <div class="text-center text-gray-500 mt-20">
+                No pending requests.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script>
-        async function fetchUserData(){
-            try{
-                const response = await fetch("/api/auth/me")
-                const data = await response.json()
+      async function fetchUserData() {
+        try {
+          const response = await fetch("/api/auth/me");
+          const data = await response.json();
 
-                if(response.ok){
-                    document.getElementById("username").textContent = data.username
-                }else{
-                    window.location.reload()
+          if (response.ok) {
+            document.getElementById("username").textContent = data.username;
+          } else {
+            window.location.href = "/login.html";
+          }
+        } catch (err) {
+          console.log("Error fetching user's data: ", err);
+        }
+      }
+
+      async function goToGameMode1() {
+        // เพิ่มเสียงกดปุ่มตรงนี้ได้
+        window.location.href = "/gamemode1";
+      }
+
+      async function logout() {
+        if (!confirm("Are you sure you want to log out?")) return;
+
+        try {
+          const response = await fetch("/api/auth/logout", {
+            method: "POST",
+          });
+          if (response.ok) {
+            window.location.reload();
+          } else {
+            alert("logout failed");
+          }
+        } catch (err) {
+          alert("Error to logout! : ", err);
+        }
+      }
+
+      async function fetchBalance() {
+        try {
+          const res = await fetch("/api/user/balance");
+          if (!res.ok) return;
+
+          const data = await res.json();
+
+          const coinSpan = document.getElementById("coinDisplay");
+          if (coinSpan) {
+            animateValue(coinSpan, 0, data.coins, 1000);
+          }
+        } catch (err) {
+          console.error("Error fetching balance:", err);
+        }
+      }
+
+      // ทำให้ coin เพิ่มขึ้นแบบ 0 - จำนวนที่มี
+      function animateValue(obj, start, end, duration) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+          if (!startTimestamp) startTimestamp = timestamp;
+          const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+          obj.innerHTML = Math.floor(progress * (end - start) + start);
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          }
+        };
+        requestAnimationFrame(step);
+      }
+
+      let isTheGameMenuOpen = false;
+      let waitToOpenOrCloseTheMenuAgain = false;
+      function openGameMenu() {
+        if (waitToOpenOrCloseTheMenuAgain) {
+          return;
+        }
+        const gameMenu = document.getElementById("gameMenu");
+        if (!isTheGameMenuOpen) {
+          waitToOpenOrCloseTheMenuAgain = true;
+          isTheGameMenuOpen = true;
+          gameMenu.classList.remove("hidden");
+          gameMenu.classList.remove("close-game-menu");
+          gameMenu.classList.add("flex");
+          gameMenu.classList.add("open-game-menu");
+          setTimeout(() => {
+            waitToOpenOrCloseTheMenuAgain = false;
+          }, 500);
+        } else {
+          waitToOpenOrCloseTheMenuAgain = true;
+          isTheGameMenuOpen = false;
+          gameMenu.classList.remove("open-game-menu");
+          gameMenu.classList.add("close-game-menu");
+          setTimeout(() => {
+            gameMenu.classList.remove("flex");
+            gameMenu.classList.add("hidden");
+            waitToOpenOrCloseTheMenuAgain = false;
+          }, 500);
+        }
+      }
+
+      let isGlobeOpen = false;
+      let openGlobeDelay = false;
+      function openGlobeSettings() {
+        const wrapper = document.getElementById("globeWrapper");
+        const currentState = wrapper.getAttribute("data-state");
+        const newState = currentState === "closed" ? "open" : "closed";
+
+        wrapper.setAttribute("data-state", newState);
+      }
+
+      const friendModal = document.getElementById("friendModal");
+      const friendModalBox = document.getElementById("friendModalBox");
+      function openFriendModal() {
+        // ปิดเมนู Globe ก่อนเพื่อให้หน้าจอเคลียร์
+        const wrapper = document.getElementById("globeWrapper");
+        wrapper.setAttribute("data-state", "closed");
+
+        friendModal.classList.remove("hidden");
+        requestAnimationFrame(() => {
+          friendModal.classList.remove("opacity-0");
+          friendModalBox.classList.remove("scale-90");
+          friendModalBox.classList.add("scale-100");
+        });
+
+        // โหลดข้อมูลเพื่อนและคำขอทันทีที่เปิด
+        loadMyFriends();
+        loadFriendRequests();
+      }
+
+      function closeFriendModal() {
+        friendModal.classList.add("opacity-0");
+        friendModalBox.classList.remove("scale-100");
+        friendModalBox.classList.add("scale-90");
+        setTimeout(() => {
+          friendModal.classList.add("hidden");
+        }, 300);
+      }
+
+      // 2. Tab Switching
+      function switchTab(tabName) {
+        // Reset styles
+        ["myFriends", "addFriend", "requests"].forEach((t) => {
+          document.getElementById(`content-${t}`).classList.add("hidden");
+          const btn = document.getElementById(`tab-${t}`);
+          btn.classList.remove("bg-cyan-600", "text-white", "shadow-lg");
+          btn.classList.add(
+            "text-gray-400",
+            "hover:text-white",
+            "hover:bg-white/10",
+          );
+        });
+
+        // Activate selected
+        document
+          .getElementById(`content-${tabName}`)
+          .classList.remove("hidden");
+        const activeBtn = document.getElementById(`tab-${tabName}`);
+        activeBtn.classList.remove(
+          "text-gray-400",
+          "hover:text-white",
+          "hover:bg-white/10",
+        );
+        activeBtn.classList.add("bg-cyan-600", "text-white", "shadow-lg");
+
+        // Load data specific to tab
+        if (tabName === "myFriends") loadMyFriends();
+        if (tabName === "requests") loadFriendRequests();
+      }
+
+      // 3. Update Badges (Red numbers)
+      function updateBadge(count) {
+        const badge = document.getElementById("friendBadge");
+        const tabBadge = document.getElementById("reqTabBadge");
+
+        // Logic 99+
+        const displayCount = count > 99 ? "99+" : count;
+
+        if (count > 0) {
+          badge.textContent = displayCount;
+          badge.classList.remove("hidden");
+
+          tabBadge.textContent = displayCount;
+          tabBadge.classList.remove("hidden");
+        } else {
+          badge.classList.add("hidden");
+          tabBadge.classList.add("hidden");
+        }
+      }
+
+      // --- API Interactions (Backend Connection) ---
+
+      // A. Load Requests & Update Badge
+      async function loadFriendRequests() {
+        const container = document.getElementById("content-requests");
+        try {
+          const res = await fetch("/api/friends/pending"); // GET pending requests
+          const data = await res.json();
+
+          updateBadge(data.length); // อัปเดตตัวเลขแจ้งเตือน
+
+          if (data.length === 0) {
+            container.innerHTML =
+              '<div class="text-center text-gray-500 mt-20">No pending requests.</div>';
+            return;
+          }
+
+          container.innerHTML = data
+            .map(
+              (req) => `
+            <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center font-bold text-white shadow-md">
+                        ${req.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="font-bold text-white">${req.username}</div>
+                        <div class="text-xs text-gray-400">Wants to be your friend</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="acceptRequest('${req.id}')" class="w-8 h-8 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-white transition-all flex items-center justify-center border border-green-500/30">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button onclick="rejectRequest('${req.id}')" class="w-8 h-8 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center border border-red-500/30">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+        `,
+            )
+            .join("");
+        } catch (err) {
+          console.error(err);
+          container.innerHTML =
+            '<div class="text-red-400 text-center">Error loading requests</div>';
+        }
+      }
+
+      // B. Load My Friends
+      async function loadMyFriends() {
+        const container = document.getElementById("content-myFriends");
+        try {
+          const res = await fetch("/api/friends/list"); // GET my friends
+          const data = await res.json();
+
+          if (data.length === 0) {
+            container.innerHTML =
+              '<div class="text-center text-gray-500 mt-20">You have no friends yet. <br> Go add someone!</div>';
+            return;
+          }
+
+          container.innerHTML = data
+            .map(
+              (friend) => `
+            <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10 hover:border-cyan-500/30 transition-all">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center font-bold text-white shadow-md">
+                        ${friend.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="font-bold text-white">${friend.username}</div>
+                        <div class="text-xs text-green-400 flex items-center gap-1">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> Online
+                        </div>
+                    </div>
+                </div>
+                <button class="text-xs bg-white/10 px-3 py-1 rounded-full text-gray-300 hover:bg-white/20">
+                    Profile
+                </button>
+            </div>
+        `,
+            )
+            .join("");
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      // C. Search Users
+      async function searchUsers() {
+        const query = document.getElementById("searchFriendInput").value;
+        const container = document.getElementById("searchResultArea");
+        if (!query) return;
+
+        container.innerHTML =
+          '<div class="text-center text-gray-400"><i class="fa-solid fa-circle-notch fa-spin"></i> Searching...</div>';
+
+        try {
+          const res = await fetch("/api/friends/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query }),
+          });
+          const data = await res.json();
+
+          if (data.length === 0) {
+            container.innerHTML =
+              '<div class="text-center text-gray-500 mt-4">User not found.</div>';
+            return;
+          }
+
+          container.innerHTML = data
+            .map(
+              (user) => `
+            <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold border border-gray-600">
+                        ${user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <span class="text-white font-bold text-sm">${user.username}</span>
+                </div>
+                ${
+                  user.isFriend
+                    ? '<span class="text-xs text-gray-400">Already Friends</span>'
+                    : user.isPending
+                      ? '<span class="text-xs text-yellow-400">Request Sent</span>'
+                      : `<button onclick="sendRequest('${user.id}')" class="text-xs bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-lg border border-cyan-600/50 hover:bg-cyan-600 hover:text-white transition-all">
+                        Add +
+                    </button>`
                 }
-            } catch(err){
-                console.log("Error fetching user's data: ",err)
-            }
+            </div>
+        `,
+            )
+            .join("");
+        } catch (err) {
+          console.error(err);
+          container.innerHTML = "Error searching.";
         }
+      }
 
-        async function goToGameMode1(){
-            window.location.href = "/gamemode1";
-        }
+      // D. Actions (Send, Accept, Reject)
+      async function sendRequest(targetId) {
+        await fetch("/api/friends/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetId }),
+        });
+        alert("Request Sent!");
+        searchUsers(); // Refresh list
+      }
 
-        async function logout() {
-            try {
-            const response = await fetch("/api/auth/logout", {
-                method: "POST",
-            });
-            if (response.ok) {
-                alert("Logout สำเร็จแล้ว!");
-                window.location.reload();
-            } else {
-                alert("logout failed");
-            }
-            } catch (err) {
-            alert("Error to logout! : ", err);
-            }
-        }
-        async function fetchBalance() {
-            try {
-            const res = await fetch("/api/user/balance");
-            if (!res.ok) return;
+      async function acceptRequest(requesterId) {
+        await fetch("/api/friends/accept", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requesterId }),
+        });
+        loadFriendRequests(); // Refresh requests
+        loadMyFriends(); // Refresh friend list
+      }
 
-            const data = await res.json();
-        
-            const coinSpan = document.getElementById("coinDisplay");
-            if (coinSpan) {
-                coinSpan.textContent = `Coins: ${data.coins}`;
-            }
+      async function rejectRequest(requesterId) {
+        // API logic for reject (similar to accept but just remove from array)
+        // await fetch(...)
+        loadFriendRequests();
+      }
 
-            } catch (err) {
-                console.error("Error fetching balance:", err);
-            }
-        }
-        fetchBalance();
-        fetchUserData();
+      // Initial Load for Badge check
+      loadFriendRequests();
+      fetchBalance();
+      fetchUserData();
     </script>
   </body>
 </html>
