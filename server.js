@@ -8,7 +8,8 @@ env.config();
 const questRoutes = require("./routes/quests");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
-const friendsRoutes = require("./routes/friends")
+const friendsRoutes = require("./routes/friends");
+const chatRoutes = require("./routes/chat");
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api", questRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friends",friendsRoutes);
+app.use("/api/chat",chatRoutes)
 
 // Frontend Route
 app.get("/", (req, res) => {
@@ -57,7 +59,9 @@ app.get("/login",hasAuth,(req,res)=>{
 })
 
 app.get("/index",requireAuth,(req,res)=>{
-  res.sendFile("index.html", {root: path.join(__dirname,"loggingIn")});
+  res.render("index", {
+  userId: req.user.id,
+});
 })
 
 app.get("/gamemode1",requireAuth,(req,res)=>{

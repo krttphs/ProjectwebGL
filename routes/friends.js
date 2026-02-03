@@ -96,7 +96,7 @@ router.post('/accept', async (req, res) => {
     const { requesterId } = req.body;
     const myId = req.user.id;
 
-    // A. อัปเดตฝั่งเรา
+    //อัปเดตฝั่งเรา
     const { data: me } = await supabase.from('users').select('friends, friend_requests').eq('id', myId).single();
     let myFriends = me.friends || [];
     let myRequests = me.friend_requests || [];
@@ -106,7 +106,7 @@ router.post('/accept', async (req, res) => {
 
     await supabase.from('users').update({ friends: myFriends, friend_requests: myRequests }).eq('id', myId);
 
-    // B. อัปเดตฝั่งเขา
+    //อัปเดตฝั่งเขา
     const { data: them } = await supabase.from('users').select('friends').eq('id', requesterId).single();
     let theirFriends = them.friends || [];
     if (!theirFriends.includes(myId)) theirFriends.push(myId);

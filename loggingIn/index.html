@@ -14,7 +14,8 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/supabaseBrowser.js"></script>
     <style>
       body {
         font-family: "BBH Bogle", sans-serif;
@@ -413,8 +414,43 @@
           </div>
         </div>
       </div>
+      <div
+        id="chatWindow"
+        class="fixed bottom-4 right-26 w-80 h-96 bg-black/80 backdrop-blur rounded-xl hidden flex flex-col"
+      >
+        <div
+          id="chatHeader"
+          class="p-3 border-b border-white/10 text-white font-bold flex justify-between flex-row"
+        >
+          <div id="ChatFriendName">Chat</div>
+          <button
+            onclick="closeChat()"
+            class="bg-white text-black py-1 px-2 rounded-xl"
+          >
+            <h5>X</h5>
+          </button>
+        </div>
+
+        <div
+          id="chatMessages"
+          class="flex-1 overflow-y-auto p-3 space-y-2"
+        ></div>
+
+        <div class="p-2 flex gap-2">
+          <input
+            id="chatInput"
+            class="flex-1 rounded bg-white/10 text-white px-2"
+          />
+          <button onclick="sendMessage()" class="px-3 bg-orange-500 rounded">
+            Send
+          </button>
+        </div>
+      </div>
     </div>
     <script>
+      //userId เรา ที่ server ส่งมาให้
+      let MY_USER_ID;
+
       async function fetchUserData() {
         try {
           const response = await fetch("/api/auth/me");
@@ -422,6 +458,7 @@
 
           if (response.ok) {
             document.getElementById("username").textContent = data.username;
+            MY_USER_ID = data.id
           } else {
             window.location.href = "/login.html";
           }
@@ -603,7 +640,7 @@
 
       // --- API Interactions (Backend Connection) ---
 
-      // A. Load Requests & Update Badge
+      // Load Requests & Update Badge
       async function loadFriendRequests() {
         const container = document.getElementById("content-requests");
         try {
@@ -650,7 +687,7 @@
         }
       }
 
-      // B. Load My Friends
+      // Load My Friends
       async function loadMyFriends() {
         const container = document.getElementById("content-myFriends");
         try {
@@ -678,9 +715,14 @@
                         </div>
                     </div>
                 </div>
+                <div>
                 <button class="text-xs bg-white/10 px-3 py-1 rounded-full text-gray-300 hover:bg-white/20">
                     Profile
                 </button>
+                <button onclick="openChatWithFriend('${friend.id}', '${friend.username}')" class="text-xs bg-white/10 px-3 py-1 rounded-full text-gray-300 hover:bg-white/20">
+                    Chat <i class="fas fa-comment-dots"></i>
+                </button>
+                </div>
             </div>
         `,
             )
@@ -690,7 +732,7 @@
         }
       }
 
-      // C. Search Users
+      // Search Users
       async function searchUsers() {
         const query = document.getElementById("searchFriendInput").value;
         const container = document.getElementById("searchResultArea");
@@ -742,7 +784,7 @@
         }
       }
 
-      // D. Actions (Send, Accept, Reject)
+      // Actions (Send, Accept, Reject)
       async function sendRequest(targetId) {
         await fetch("/api/friends/request", {
           method: "POST",
@@ -767,6 +809,132 @@
         // API logic for reject (similar to accept but just remove from array)
         // await fetch(...)
         loadFriendRequests();
+      }
+
+      // ขอ roomId จาก server (มีอยู่แล้ว หรือสร้างใหม่)
+      async function openChatWithFriend(friendId, friendName) {
+        try {
+          const res = await fetch("/api/chat/open", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ friendId }),
+          });
+
+          const { roomId } = await res.json();
+
+          // เปิด popup แชท
+          openChat(roomId, friendName);
+        } catch (err) {
+          console.error("openChatWithFriend error:", err);
+        }
+      }
+
+      //chat popup
+      let currentRoomId = null;
+
+      async function openChat(roomId, friendName) {
+        closeFriendModal()  
+        currentRoomId = roomId;
+
+        // แสดง popup
+        document.getElementById("chatWindow").classList.remove("hidden");
+        document.getElementById("ChatFriendName").innerText = friendName;
+
+        // โหลดข้อความเก่า
+        const res = await fetch(`/api/chat/${roomId}/messages`);
+        const messages = await res.json();
+
+        console.log("CHAT HISTORY:", messages);
+
+        renderMessages(messages);
+
+        // subscribe realtime
+        subscribeChatRealtime(roomId);
+      }
+
+      async function closeChat() {
+        document.getElementById("chatWindow").classList.add("hidden");
+      }
+
+      //ส่งข้อความ
+      async function sendMessage() {
+        const input = document.getElementById("chatInput");
+        const text = input.value.trim();
+        if (!text || !currentRoomId) return;
+
+        await fetch("/api/chat/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId: currentRoomId,
+            message: text,
+          }),
+        });
+
+        input.value = "";
+      }
+
+      //realtime ของ supabase
+      //unsubscribe ห้องเก่า (ถ้าเปลี่ยนแชท)
+      //subscribe ห้องใหม่
+      //มีข้อความใหม่ → append ทันที
+      let chatChannel = null;
+
+      function subscribeChatRealtime(roomId) {
+        if (chatChannel) {
+          supabase.removeChannel(chatChannel);
+          chatChannel = null;
+        }
+
+        chatChannel = supabase
+          .channel("chat-" + roomId)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "chat_messages",
+              filter: `room_id=eq.${roomId}`,
+            },
+            (payload) => {
+              appendMessage(payload.new);
+            },
+          )
+          .subscribe();
+      }
+
+      //แสดงข้อความเก่า
+      function renderMessages(messages) {
+        const box = document.getElementById("chatMessages");
+        box.innerHTML = "";
+
+        messages.forEach((msg) => {
+          appendMessage(msg);
+        });
+
+        box.scrollTop = box.scrollHeight;
+      }
+
+      //เพิ่มข้อความทีละอัน ซ้ายของเขา ขวาของเรา
+      function appendMessage(msg) {
+        const box = document.getElementById("chatMessages");
+
+        const div = document.createElement("div");
+        div.className = "flex";
+        console.log(msg.sender_id)
+        console.log(MY_USER_ID)
+        div.classList.add(
+          msg.sender_id === MY_USER_ID ? "justify-end" : "justify-start",
+        );
+
+        div.innerHTML = `
+    <span class="inline-block bg-white/10 text-white px-3 py-1 rounded-lg max-w-[70%]">
+      ${msg.message}
+    </span>
+  `;
+
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
       }
 
       // Initial Load for Badge check

@@ -86,7 +86,7 @@ router.get("/me", async (req, res) => {
     return res.status(401).json({ error: "Token ไม่ถูกต้อง หรือหมดอายุ" });
   }
 
-  // ดึงข้อมูล profile จาก table users
+  // ดึงข้อมูล profile จาก table users 
   const { data: profile, error: profileError } = await supabase
     .from("users")
     .select("username, coins")
