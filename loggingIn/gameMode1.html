@@ -505,9 +505,9 @@ class Main {
                 "KB" +
                 "\nรางวัล: " + currentQuest.rewards;
               addReward(currentQuest.rewards)
-              // if (unityInstance) {
-              //   unityInstance.SendMessage("player", "OnSubmitClicked");
-              // }
+              if (unityInstance) {
+                unityInstance.SendMessage("player1", "TriggerAttack");
+              }
             } else {
               output.textContent =
                 "❌ Output ไม่ตรงกับที่ต้องการ\n" +
@@ -583,9 +583,9 @@ class Main {
         console.log("ได้รับเงินรางวัล! ยอดคงเหลือ:", data.newBalance);
 
         // ถ้ามี Unity ให้ส่งค่าไปอัปเดต UI ในเกม
-        if (unityInstance) {
-          unityInstance.SendMessage("player1", "TriggerAttack");
-        }
+        // if (unityInstance) {
+        //   unityInstance.SendMessage("player1", "TriggerAttack");
+        // }
       } catch (err) {
         console.error("Server Error:", err);
       }
