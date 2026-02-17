@@ -67,7 +67,7 @@ router.post("/login", async (req, res) => {
   if (error) return res.status(401).json({ error: error.message });
   res.cookie("token", data.session.access_token, {
     httpOnly: true, // httpOnly: true แปลว่า JavaScript ฝั่ง Client จะแอบอ่านไม่ได้
-    maxAge: 5 * 60 * 1000, // maxAge: อายุของ Cookie ในที่นี้ตั้ง 5 นาที
+    maxAge: 60 * 60 * 1000, // maxAge: อายุของ Cookie
   });
 
   res.json({ message: "เข้าสู่ระบบสำเร็จ", user: data.user });
@@ -99,7 +99,7 @@ router.get("/me", async (req, res) => {
 
   res.cookie("token", token, {
     httpOnly: true,
-    maxAge: 5 * 60 * 1000,
+    maxAge: 60 * 60 * 1000,
   });
 
   res.json({

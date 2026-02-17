@@ -1,543 +1,472 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Unity Web Player | my first game</title>
-    <link rel="shortcut icon" href="/TemplateData/favicon.ico" />
-    <link rel="stylesheet" href="/TemplateData/style.css" />
-    <link rel="icon" type="image/png" href="/img/webIcon.png" />
-    <style>
-      :root {
-        --bg: #0f1720;
-        --left-bg: #000000; /* เปลี่ยนพื้นหลังเกมเป็นดำเพื่อให้เห็นขอบชัด */
-        --right-bg: #1e1e2e;
-        --gutter-bg: #252533;
-        --gutter-color: #9aa0a6;
-        --text: #d7d7d7;
-        --muted: #9aa0a6;
-        --accent: #3c7bd9;
-        --editor-font: "Fira Code", "Consolas", "Courier New", monospace;
-      }
 
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        font-family: system-ui, Segoe UI, Roboto, Arial;
-        overflow: hidden; /* ป้องกัน Scrollbar ของหน้าจอหลัก */
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Unity Web Player | my first game</title>
+  <link rel="shortcut icon" href="/TemplateData/favicon.ico" />
+  <link rel="stylesheet" href="/TemplateData/style.css" />
+  <link rel="icon" type="image/png" href="/img/webIcon.png" />
+  <style>
+    :root {
+      --bg: #0f1720;
+      --right-bg: rgba(20, 20, 35, 0.85);
+      --gutter-bg: #1e1e2e;
+      --gutter-color: #9aa0a6;
+      --text: #d7d7d7;
+      --accent: #3c7bd9;
+      --editor-font: "Fira Code", "Consolas", monospace;
+    }
 
-      body {
-        background: var(--bg);
-        color: var(--text);
-        display: flex; /* ✅ หัวใจสำคัญ: จัดเรียงแบบแนวนอน */
-        flex-direction: row; /* ✅ ยืนยันว่าเป็นแนวนอน ซ้าย-ขวา */
-      }
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      background: #000;
+    }
 
-      /* --- ส่วนซ้าย: Unity Game --- */
-      .left {
-        flex: 0 0 50%; /* ✅ กำหนดความกว้างคงที่ 50% หรือแก้เป็น 60% ตามชอบ */
-        max-width: 50%; /* ✅ กันไม่ให้ขยายเกิน */
-        background: var(--left-bg);
-        position: relative; /* ✅ เพื่อให้ Unity อ้างอิงจากกล่องนี้ ไม่ใช่หน้าจอ */
-        order: 1; /* อยู่ซ้าย */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
+    /* --- Game Fullscreen Container --- */
+    .game-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
 
-      /* --- ส่วนขวา: Editor --- */
-      .right {
-        flex: 1; /* กินพื้นที่ที่เหลือ */
-        background: var(--right-bg);
-        padding: 12px;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-width: 0; /* ป้องกัน Flex แตก */
-        order: 2; /* อยู่ขวา */
-        height: 100%; /* สูงเต็มจอ */
-      }
+    #unity-container {
+      width: 100% !important;
+      height: 100% !important;
+    }
 
-      /* --- 🔧 แก้ไข Unity Container ให้ไม่ออกนอกลู่นอกทาง --- */
-      #unity-container {
-        width: 100% !important; /* เต็มพื้นที่ของ .left */
-        height: 100% !important; /* เต็มพื้นที่ของ .left */
-        position: relative !important; /* ✅ สำคัญมาก: ยกเลิก absolute เดิมของ Unity */
-        transform: none !important; /* ✅ ยกเลิกการจัดกึ่งกลางจอ */
-        left: auto !important;
-        top: auto !important;
-        display: flex !important;
-        justify-content: center;
-        align-items: center;
-      }
+    #lineNumbers {
+      white-space: pre;
+    }
 
-      canvas {
-        /* บังคับให้ Canvas ปรับขนาดตาม container แต่มักจะถูกคุมโดย Unity JS */
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain; /* ให้ภาพเกมแสดงผลพอดีสัดส่วน */
-      }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
 
-      /* ซ่อน Loading Bar เมื่อโหลดเสร็จ (optional) */
-      #unity-loading-bar {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
+    /* --- Floating Editor Panel --- */
+    .editor-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      bottom: 20px;
+      width: 420px;
+      background: var(--right-bg);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+      color: var(--text);
+    }
 
-      /* --- CSS ของ Editor (คงเดิม) --- */
-      .controls {
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-        background: linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.02),
-          transparent
-        );
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.03);
-        flex-shrink: 0; /* ห้ามหด */
-      }
+    .editor-panel.hidden {
+      transform: translateX(450px);
+      opacity: 0;
+      pointer-events: none;
+    }
 
-      .controls .col {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-      label {
-        font-size: 12px;
-        color: var(--muted);
-      }
+    /* --- Toggle Button --- */
+    #toggle-editor-btn {
+      position: fixed;
+      top: 25px;
+      right: 25px;
+      z-index: 101;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(60, 123, 217, 0.4);
+    }
 
-      select,
-      textarea.input-problem {
-        background: transparent;
-        color: var(--text);
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        padding: 8px;
-        border-radius: 6px;
-        min-width: 100px; /* ลดขนาดลงหน่อย */
-        outline: none;
-      }
+    /* --- Inner Elements Styling --- */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
 
-      textarea.input-problem {
-        min-height: 40px;
-        resize: vertical;
-        width: 100%;
-        font-family: inherit;
-        font-size: 13px;
-      }
+    .col-row {
+      display: flex;
+      gap: 10px;
+    }
 
-      .editor-wrap {
-        flex: 1; /* ให้ Editor ยืดเต็มพื้นที่แนวตั้งที่เหลือ */
-        display: flex;
-        overflow: hidden;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.03);
-      }
+    .col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
 
-      .gutter {
-        width: 40px;
-        background: var(--gutter-bg);
-        color: var(--gutter-color);
-        padding: 8px 4px;
-        text-align: right;
-        font-family: var(--editor-font);
-        font-size: 13px;
-        line-height: 20px;
-        overflow: hidden;
-      }
+    label {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: bold;
+      text-transform: uppercase;
+    }
 
-      .editor {
-        flex: 1;
-        position: relative;
-        background: transparent;
-        overflow: hidden;
-      }
+    select,
+    textarea,
+    #output {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 8px;
+      border-radius: 6px;
+    }
 
-      #code {
-        width: 100%;
-        height: 100%;
-        resize: none;
-        border: 0;
-        outline: none;
-        background: transparent;
-        color: var(--text);
-        font-family: var(--editor-font);
-        font-size: 13px;
-        line-height: 20px;
-        padding: 8px 12px;
-        box-sizing: border-box;
-        white-space: pre;
-        overflow: auto;
-      }
+    .input-problem {
+      height: 80px;
+      resize: none;
+      font-size: 13px;
+    }
 
-      .command {
-        background: #2c2c3c;
-        padding: 6px 10px;
-        font-size: 13px;
-        color: var(--muted);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-shrink: 0;
-      }
+    .editor-wrap {
+      flex: 1;
+      display: flex;
+      background: var(--gutter-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
 
-      button {
-        border-radius: 7px;
-        padding: 4px 10px;
-        cursor: pointer;
-      }
+    .gutter {
+      background: #111;
+      color: #555;
+      padding: 10px 5px;
+      text-align: right;
+      min-width: 30px;
+      font-family: var(--editor-font);
+      font-size: 13px;
+    }
 
-      #output {
-        background: #0d0d0d;
-        color: #0f0;
-        padding: 10px;
-        height: 120px;
-        overflow: auto;
-        white-space: pre;
-        border-radius: 6px;
-        border: 1px solid #333;
-        font-size: 13px;
-        margin-top: 8px;
-        flex-shrink: 0;
-      }
-      .gutter {
-        width: 56px;
-        background: var(--gutter-bg);
-        color: var(--gutter-color);
-        padding: 8px 6px;
-        box-sizing: border-box;
-        font-family: var(--editor-font);
-        font-size: 13px;
-        line-height: 20px;
-        text-align: right;
-        overflow: hidden;
-      }
+    .editor {
+      flex: 1;
+    }
 
-      .gutter .lines {
-        user-select: none;
-        display: block;
-        white-space: pre;
-      }
-      @media (max-width: 800px) {
-        body {
-          flex-direction: column;
-        }
-        .left {
-          flex: 0 0 40vh;
-          width: 100%;
-          max-width: 100%;
-          order: 1;
-        }
-        .right {
-          width: 100%;
-          order: 2;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Game -->
-    <div id="unity-container" class="unity-desktop panel left">
-      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
+    #code {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      color: #50fa7b;
+      font-family: var(--editor-font);
+      font-size: 13px;
+      padding: 10px;
+      outline: none;
+      resize: none;
+    }
+
+    #output {
+      height: 100px;
+      overflow-y: auto;
+      margin-top: 10px;
+      font-family: var(--editor-font);
+      font-size: 12px;
+      white-space: pre-wrap;
+      color: #8be9fd;
+    }
+
+    button {
+      cursor: pointer;
+      padding: 8px 15px;
+      border-radius: 6px;
+      border: none;
+      background: #44475a;
+      color: white;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      filter: brightness(1.2);
+    }
+
+    #runBtn {
+      background: #50fa7b;
+      color: #282a36;
+      font-weight: bold;
+    }
+
+    #submitBtn {
+      background: #ff79c6;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* Unity Loading Elements (สำคัญมากเพื่อให้ JS ไม่ Error) */
+    #unity-loading-bar {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      z-index: 2;
+    }
+
+    #unity-progress-bar-empty {
+      width: 141px;
+      height: 18px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+
+    #unity-progress-bar-full {
+      width: 0%;
+      height: 100%;
+      background: var(--accent);
+      border-radius: 10px;
+      transition: 0.3s;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Game -->
+  <button id="toggle-editor-btn" onclick="toggleEditor()">Close Editor</button>
+
+  <div class="game-layer">
+    <div id="unity-container">
+      <canvas id="unity-canvas"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
           <div id="unity-progress-bar-full"></div>
         </div>
       </div>
-      <div id="unity-warning"></div>
-      <!-- <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">my first game</div>
-      </div> -->
+      <div id="unity-fullscreen-button" style="display: none;"></div>
+      <div id="unity-warning" style="position: absolute; top:0; left:0;"></div>
     </div>
+  </div>
 
-    <!-- button summon Editor -->
-    <!-- <div class="editor">
-      <button onclick="" style="padding: 20px; border-radius: 20%; border-width: 0.4rem;">
-        Editor
-      </button>
-    </div> -->
-
-    <!-- Editor!!! -->
-    <div class="panel right">
-      <div class="controls">
+  <div class="editor-panel" id="editor-panel">
+    <div class="controls">
+      <div class="col-row">
         <div class="col">
-          <label for="lang">ภาษาที่ใช้</label>
+          <label>Language</label>
           <select id="lang">
-            <option value="62" style="color: #000000">Java</option>
-            <option value="63" style="color: #000000">JavaScript</option>
-            <option value="71" style="color: #000000">Python</option>
-            <option value="54" style="color: #000000">C++</option>
+            <option value="62">Java</option>
+            <option value="63">JavaScript</option>
+            <option value="71">Python</option>
           </select>
         </div>
         <div class="col">
-          <label for="difficulty">ระดับความยาก-ง่าย</label>
+          <label>Difficulty</label>
           <select id="difficulty">
-            <option value="easy" style="color: #000000">ง่าย</option>
-            <option value="mid" style="color: #000000">ปานกลาง</option>
-            <option value="hard" style="color: #000000">ยาก</option>
+            <option value="easy">Easy</option>
+            <option value="mid">Medium</option>
           </select>
         </div>
-        <div class="col" style="flex: 1; max-width: 600px">
-          <label for="problem">โจทย์</label>
-          <textarea
-            id="problem"
-            class="input-problem"
-            placeholder="กรอกโจทย์ที่นี่..."
-          >
-กรุณาสุ่มโจทย์</textarea
-          >
-        </div>
-        <div class="col" style="display: inline-block; margin-top: 20px">
-          <label>&nbsp;</label>
-          <button id="randomQuestBtn">สุ่มโจทย์</button>
-          <button onclick="back()">ออก</button>
-        </div>
       </div>
 
-      <div class="command">
-        Coding here...
-        <div>
-          <button id="runBtn">Run</button>
-          <button id="submitBtn">Submit</button>
-        </div>
+      <div class="col">
+        <label>Quest Description</label>
+        <textarea id="problem" class="input-problem" readonly>กรุณาสุ่มโจทย์เพื่อเริ่มเล่น...</textarea>
       </div>
 
-      <div
-        class="editor-wrap"
-        id="editorWrap"
-        style="height: calc(100% - 200px)"
-      >
-        <div class="gutter" id="gutter">
-          <div class="lines" id="lineNumbers">1</div>
-        </div>
-        <div class="editor">
-          <textarea
-            id="code"
-            spellcheck="false"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-          >
-// พิมพ์โค้ดของคุณที่นี่
-public class Main {
-    public static void main(String[] args) {
-        
-    }
-}</textarea
-          >
-        </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="randomQuestBtn" style="flex: 2; background: var(--accent);">Random Quest</button>
+        <button onclick="back()" style="flex: 1;">Give up</button>
       </div>
-
-      <div id="output">Output จะมาโชว์ที่นี่...</div>
     </div>
-    <script>
-      var canvas = document.querySelector("#unity-canvas");
 
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length
-            ? "block"
-            : "none";
-        }
-        var div = document.createElement("div");
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == "error") div.style = "background: red; padding: 10px;";
-        else {
-          if (type == "warning")
-            div.style = "background: yellow; padding: 10px;";
-          setTimeout(function () {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+      <label>Code Editor</label>
+      <div style="display: flex; gap: 5px;">
+        <button id="runBtn">Run</button>
+        <button id="submitBtn">Submit</button>
+      </div>
+    </div>
+
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter">
+        <div id="lineNumbers">1</div>
+      </div>
+      <div class="editor">
+        <textarea id="code" spellcheck="false">import java.util.Scanner;
+class Main {
+    public static void main(String[] args) {
+      //พิมพ์โค้ดที่นี่...
+    }
+}</textarea>
+      </div>
+    </div>
+
+    <div id="output">Output logs will appear here...</div>
+  </div>
+  <script>
+    var canvas = document.querySelector("#unity-canvas");
+    var unityInstance = null; // เก็บ instance ไว้ใช้ภายนอก
+
+    // --- Unity Loader Logic ---
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/Build.loader.js";
+    var config = {
+      dataUrl: buildUrl + "/Build.data",
+      frameworkUrl: buildUrl + "/Build.framework.js",
+      codeUrl: buildUrl + "/Build.wasm",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "DefaultCompany",
+      productName: "My Game",
+      productVersion: "2.0.1",
+    };
+
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      // Mobile handling (ถ้าจำเป็น)
+    } else {
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+    }
+
+    document.querySelector("#unity-loading-bar").style.display = "block";
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+      }).then((instance) => {
+        unityInstance = instance;
+        document.querySelector("#unity-loading-bar").style.display = "none";
+      }).catch((message) => { alert(message); });
+    };
+    document.body.appendChild(script);
+
+    // --- UI Functions ---
+    function toggleEditor() {
+      const panel = document.getElementById('editor-panel');
+      const btn = document.getElementById('toggle-editor-btn');
+      const isHidden = panel.classList.toggle('hidden');
+      btn.textContent = isHidden ? 'Open Editor' : 'Close Editor';
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+    });
+
+    // ------- Judge0 -------
+    (function () {
+      const code = document.getElementById("code");
+      const lineNumbers = document.getElementById("lineNumbers");
+      const gutter = document.getElementById("gutter");
+
+      function updateLineNumbers() {
+        const lines = code.value.split("\n").length;
+        let nums = "";
+        for (let i = 1; i <= lines; i++) nums += i + "\n";
+        lineNumbers.textContent = nums;
       }
 
-      var buildUrl = "/Build";
-      var loaderUrl = buildUrl + "/Game-WebGL-Game-Camera+Nametext.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/Game-WebGL-Game-Camera+Nametext.data",
-        frameworkUrl:
-          buildUrl + "/Game-WebGL-Game-Camera+Nametext.framework.js",
-        codeUrl: buildUrl + "/Game-WebGL-Game-Camera+Nametext.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "DefaultCompany",
-        productName: "my first game",
-        productVersion: "1.0",
-        showBanner: unityShowBanner,
-      };
-
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement("meta");
-        meta.name = "viewport";
-        meta.content =
-          "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
-        document.getElementsByTagName("head")[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
-      }
-
-      document.querySelector("#unity-loading-bar").style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width =
-            100 * progress + "%";
-        })
-          .then((unityInstance) => {
-            document.querySelector("#unity-loading-bar").style.display = "none";
-            // document.querySelector("#unity-fullscreen-button").onclick = () => {
-            //   unityInstance.SetFullscreen(1);
-            // };
-
-            // Unloading web content from DOM so that browser GC can run can be tricky to get right.
-            // This code snippet shows how to correctly implement a Unity content Unload mechanism to a web page.
-
-            // Unloading Unity content enables a web page to reclaim the memory used by Unity, e.g. for
-            // the purpose of later loading another Unity content instance on the _same_ web page.
-
-            // When using this functionality, take caution to carefully make sure to clear all JavaScript code,
-            // DOM element and event handler references to the old content you may have retained, or
-            // otherwise the browser's garbage collector will be unable to reclaim the old page.
-
-            // N.b. Unity content does _not_ need to be manually unloaded when the user is navigating away from
-            // the current page to another web page. The browser will take care to clear memory of old visited
-            // pages automatically. This functionality is only needed if you want to switch between loading
-            // multiple Unity builds on a single web page.
-            var quit = document.createElement("button");
-            quit.style =
-              "margin-left: 5px; background-color: lightgray; border: none; padding: 5px; cursor: pointer";
-            quit.innerHTML = "Unload";
-            // document.querySelector("#unity-build-title").appendChild(quit);
-            // quit.onclick = () => {
-            //   // Quit Unity application execution
-            //   unityInstance.Quit().then(() => {
-            //     // Remove DOM elements from the page so GC can run
-            //     document.querySelector("#unity-container").remove();
-            //     canvas = null;
-            //     // Remover script elements from the page so GC can run
-            //     script.remove();
-            //     script = null;
-            //   });
-            // };
-          })
-          .catch((message) => {
-            alert(message);
-          });
-      };
-      document.body.appendChild(script);
-
-      ["keydown", "keypress", "keyup"].forEach((evt) => {
-        window.addEventListener(
-          evt,
-          function (e) {
-            const active = document.activeElement;
-            if (
-              active &&
-              (active.tagName === "TEXTAREA" ||
-                active.tagName === "INPUT" ||
-                active.tagName === "SELECT")
-            ) {
-              e.stopImmediatePropagation(); // กัน Unity แย่งคีย์
-            }
-          },
-          true
-        ); // capture phase
+      code.addEventListener("scroll", () => {
+        gutter.scrollTop = code.scrollTop;
       });
-      // ------- Judge0 -------
-      (function () {
-        const code = document.getElementById("code");
-        const lineNumbers = document.getElementById("lineNumbers");
-        const gutter = document.getElementById("gutter");
+      code.addEventListener("input", updateLineNumbers);
+      code.addEventListener("keydown", function (e) {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          let s = this.selectionStart;
+          let ePos = this.selectionEnd;
+          this.value =
+            this.value.substring(0, s) + "\t" + this.value.substring(ePos);
+          this.selectionStart = this.selectionEnd = s + 1;
+          updateLineNumbers();
+        }
+      });
 
-        function updateLineNumbers() {
-          const lines = code.value.split("\n").length;
-          let nums = "";
-          for (let i = 1; i <= lines; i++) nums += i + "\n";
-          lineNumbers.textContent = nums;
+      updateLineNumbers();
+    })();
+
+    // -------- Judge0 --------
+    const runBtn = document.getElementById("runBtn");
+    const output = document.getElementById("output");
+    let timeout = null;
+    runBtn.addEventListener("click", async () => {
+      if (!currentQuest) {
+        output.textContent = "⚠️ กรุณาสุ่มโจทย์ก่อน";
+        return;
+      }
+      clearInterval(timeout);
+      let dots = 0;
+      timeout = setInterval(() => {
+        dots = (dots % 3) + 1;
+        output.textContent = "⏳ กำลังรันโค้ด" + ".".repeat(dots);
+      }, 500);
+
+      const lang = document.getElementById("lang").value;
+      const code = document.getElementById("code").value;
+
+      try {
+        let res = await fetch(
+          "https://ce.judge0.com/submissions/?base64_encoded=false&wait=true",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source_code: code,
+              language_id: lang,
+              stdin: currentQuest.inputRun,
+            }),
+          }
+        );
+        let result = await res.json();
+        clearInterval(timeout);
+        if (result.stdout) {
+          output.textContent =
+            result.stdout +
+            "\nเวลาที่ใช้: " +
+            result.time +
+            " วินาที" +
+            "\nmomory ที่ใช้: " +
+            result.memory +
+            "KB";
+        } else if (result.stderr)
+          output.textContent = "Error:\n" + result.stderr;
+        else if (result.compile_output)
+          output.textContent = "Compile Error:\n" + result.compile_output;
+        else output.textContent = "⚠️ ไม่พบ output";
+      } catch (err) {
+        clearInterval(timeout);
+        output.textContent = "เกิดข้อผิดพลาด: " + err.message;
+      }
+    });
+    function normalize(str) {
+      return str.replace(/\r\n/g, "\n").trim();
+    }
+    //ส่ง Submit เข้า Unity
+    const submitBtn = document.getElementById("submitBtn");
+    let submitTimeout = null;
+    document
+      .getElementById("submitBtn")
+      .addEventListener("click", async () => {
+        if (!currentQuest) {
+          output.textContent = "⚠️ กรุณาสุ่มโจทย์ก่อน";
+          return;
         }
 
-        code.addEventListener("scroll", () => {
-          gutter.scrollTop = code.scrollTop;
-        });
-        code.addEventListener("input", updateLineNumbers);
-        code.addEventListener("keydown", function (e) {
-          if (e.key === "Tab") {
-            e.preventDefault();
-            let s = this.selectionStart;
-            let ePos = this.selectionEnd;
-            this.value =
-              this.value.substring(0, s) + "\t" + this.value.substring(ePos);
-            this.selectionStart = this.selectionEnd = s + 1;
-            updateLineNumbers();
-          }
-        });
-
-        updateLineNumbers();
-      })();
-
-      // -------- Judge0 --------
-      const runBtn = document.getElementById("runBtn");
-      const output = document.getElementById("output");
-      let timeout = null;
-      runBtn.addEventListener("click", async () => {
-        if (!currentQuest) {
-            output.textContent = "⚠️ กรุณาสุ่มโจทย์ก่อน";
-            return;
-          }
-        clearInterval(timeout);
+        clearInterval(submitTimeout);
         let dots = 0;
-        timeout = setInterval(() => {
+        submitTimeout = setInterval(() => {
           dots = (dots % 3) + 1;
-          output.textContent = "⏳ กำลังรันโค้ด" + ".".repeat(dots);
+          output.textContent =
+            "ส่งโค้ดเรียบร้อยแล้ว ! \r⏳ กำลังรันโค้ด" + ".".repeat(dots);
         }, 500);
 
         const lang = document.getElementById("lang").value;
@@ -552,177 +481,119 @@ public class Main {
               body: JSON.stringify({
                 source_code: code,
                 language_id: lang,
-                stdin: currentQuest.inputRun,
+                stdin: currentQuest.inputSubmit, // ✅ ใช้ inputSubmit จากโจทย์
               }),
             }
           );
+
           let result = await res.json();
-          clearInterval(timeout);
+          clearInterval(submitTimeout);
+
           if (result.stdout) {
-            output.textContent =
-              result.stdout +
-              "\nเวลาที่ใช้: " +
-              result.time +
-              " วินาที" +
-              "\nmomory ที่ใช้: " +
-              result.memory +
-              "KB";
-          } else if (result.stderr)
+            if (
+              normalize(result.stdout) ===
+              normalize(currentQuest.expectedOutput)
+            ) {
+              // ✅ เทียบกับ expectedOutput
+              output.textContent =
+                "ถูกต้อง!! ✅" +
+                "\nเวลาที่ใช้: " +
+                result.time +
+                " วินาที" +
+                "\nmemory ที่ใช้: " +
+                result.memory +
+                "KB" +
+                "\nรางวัล: " + currentQuest.rewards;
+              addReward(currentQuest.rewards)
+              // if (unityInstance) {
+              //   unityInstance.SendMessage("player", "OnSubmitClicked");
+              // }
+            } else {
+              output.textContent =
+                "❌ Output ไม่ตรงกับที่ต้องการ\n" +
+                "Expected:\n" +
+                currentQuest.show_expect_output +
+                "\n" +
+                "Got:\n" +
+                result.stdout;
+            }
+          } else if (result.stderr) {
             output.textContent = "Error:\n" + result.stderr;
-          else if (result.compile_output)
+          } else if (result.compile_output) {
             output.textContent = "Compile Error:\n" + result.compile_output;
-          else output.textContent = "⚠️ ไม่พบ output";
+          } else {
+            output.textContent = "⚠️ ไม่พบ output";
+          }
         } catch (err) {
-          clearInterval(timeout);
+          clearInterval(submitTimeout);
           output.textContent = "เกิดข้อผิดพลาด: " + err.message;
         }
       });
-      function normalize(str) {
-        return str.replace(/\r\n/g, "\n").trim();
-      }
-      //ส่ง Submit เข้า Unity
-      const submitBtn = document.getElementById("submitBtn");
-      let submitTimeout = null;
-      document
-        .getElementById("submitBtn")
-        .addEventListener("click", async () => {
-          if (!currentQuest) {
-            output.textContent = "⚠️ กรุณาสุ่มโจทย์ก่อน";
-            return;
-          }
 
-          clearInterval(submitTimeout);
-          let dots = 0;
-          submitTimeout = setInterval(() => {
-            dots = (dots % 3) + 1;
-            output.textContent =
-              "ส่งโค้ดเรียบร้อยแล้ว ! \r⏳ กำลังรันโค้ด" + ".".repeat(dots);
-          }, 500);
+    let currentQuest = null; // เก็บโจทย์ที่สุ่มมา
 
-          const lang = document.getElementById("lang").value;
-          const code = document.getElementById("code").value;
-
-          try {
-            let res = await fetch(
-              "https://ce.judge0.com/submissions/?base64_encoded=false&wait=true",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  source_code: code,
-                  language_id: lang,
-                  stdin: currentQuest.inputSubmit, // ✅ ใช้ inputSubmit จากโจทย์
-                }),
-              }
-            );
-
-            let result = await res.json();
-            clearInterval(submitTimeout);
-
-            if (result.stdout) {
-              if (
-                normalize(result.stdout) ===
-                normalize(currentQuest.expectedOutput)
-              ) {
-                // ✅ เทียบกับ expectedOutput
-                output.textContent =
-                  "ถูกต้อง!! ✅" +
-                  "\nเวลาที่ใช้: " +
-                  result.time +
-                  " วินาที" +
-                  "\nmemory ที่ใช้: " +
-                  result.memory +
-                  "KB" +
-                  "\nรางวัล: "+currentQuest.rewards;
-                  addReward(currentQuest.rewards)
-                // if (unityInstance) {
-                //   unityInstance.SendMessage("player", "OnSubmitClicked");
-                // }
-              } else {
-                output.textContent =
-                  "❌ Output ไม่ตรงกับที่ต้องการ\n" +
-                  "Expected:\n" +
-                  currentQuest.show_expect_output +
-                  "\n" +
-                  "Got:\n" +
-                  result.stdout;
-              }
-            } else if (result.stderr) {
-              output.textContent = "Error:\n" + result.stderr;
-            } else if (result.compile_output) {
-              output.textContent = "Compile Error:\n" + result.compile_output;
-            } else {
-              output.textContent = "⚠️ ไม่พบ output";
-            }
-          } catch (err) {
-            clearInterval(submitTimeout);
-            output.textContent = "เกิดข้อผิดพลาด: " + err.message;
-          }
-        });
-
-      let currentQuest = null; // เก็บโจทย์ที่สุ่มมา
-
-      document
-        .getElementById("randomQuestBtn")
-        .addEventListener("click", async () => {
-          try {
-            // ดึงค่าความยากจาก Dropdown มาเก็บใส่ตัวแปรก่อน
-            const difficultyLevel = document.getElementById("difficulty").value;
-
-            let res = await fetch(`/api/quests/random/${difficultyLevel}`);
-
-            if (!res.ok) {
-              throw new Error(`Server error: ${res.status}`);
-            }
-
-            let quest = await res.json();
-            currentQuest = quest;
-          
-            currentQuest.inputRun = quest.input_run;
-            currentQuest.inputSubmit = quest.input_submit;
-            currentQuest.expectedOutput = quest.expected_output;
-            currentQuest.rewards = quest.rewards
-
-            // แสดงผลใน UI
-            document.getElementById("problem").value = quest.description;
-            output.textContent = "สุ่มได้โจทย์: " + quest.title + "\n";
-            output.textContent += "Input ที่ใช้: " + quest.input_run + "\n";
-            output.textContent +=
-              "ผลลัพธ์ที่ต้องการ:\n" + quest.show_expect_output;
-          } catch (err) {
-            console.error(err);
-            output.textContent = "สุ่มโจทย์ไม่สำเร็จ: " + err.message;
-          }
-        });
-      // ฟังก์ชันสำหรับเรียก API บวกเงิน
-      async function addReward(amount) {
+    document
+      .getElementById("randomQuestBtn")
+      .addEventListener("click", async () => {
         try {
-          const res = await fetch("/api/user/add-coins", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ amount: amount }),
-          });
+          // ดึงค่าความยากจาก Dropdown มาเก็บใส่ตัวแปรก่อน
+          const difficultyLevel = document.getElementById("difficulty").value;
+
+          let res = await fetch(`/api/quests/random/${difficultyLevel}`);
 
           if (!res.ok) {
-            const err = await res.json();
-            console.error("เติมเงินไม่เข้า:", err);
-            return;
+            throw new Error(`Server error: ${res.status}`);
           }
 
-          const data = await res.json();
-          console.log("ได้รับเงินรางวัล! ยอดคงเหลือ:", data.newBalance);
+          let quest = await res.json();
+          currentQuest = quest;
 
-          // ถ้ามี Unity ให้ส่งค่าไปอัปเดต UI ในเกม
-          if (unityInstance) {
-            // unityInstance.SendMessage("GameManager", "UpdateCoins", data.newBalance);
-          }
+          currentQuest.inputRun = quest.input_run;
+          currentQuest.inputSubmit = quest.input_submit;
+          currentQuest.expectedOutput = quest.expected_output;
+          currentQuest.rewards = quest.rewards
+
+          // แสดงผลใน UI
+          document.getElementById("problem").value = quest.description;
+          output.textContent = "สุ่มได้โจทย์: " + quest.title + "\n";
+          output.textContent += "Input ที่ใช้: " + quest.input_run + "\n";
+          output.textContent +=
+            "ผลลัพธ์ที่ต้องการ:\n" + quest.show_expect_output;
         } catch (err) {
-          console.error("Server Error:", err);
+          console.error(err);
+          output.textContent = "สุ่มโจทย์ไม่สำเร็จ: " + err.message;
         }
+      });
+    // ฟังก์ชันสำหรับเรียก API บวกเงิน
+    async function addReward(amount) {
+      try {
+        const res = await fetch("/api/user/add-coins", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: amount }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          console.error("เติมเงินไม่เข้า:", err);
+          return;
+        }
+
+        const data = await res.json();
+        console.log("ได้รับเงินรางวัล! ยอดคงเหลือ:", data.newBalance);
+
+        // ถ้ามี Unity ให้ส่งค่าไปอัปเดต UI ในเกม
+        if (unityInstance) {
+          unityInstance.SendMessage("player1", "TriggerAttack");
+        }
+      } catch (err) {
+        console.error("Server Error:", err);
       }
-      function back() {
-        window.location.href = "/";
-      }
-    </script>
-  </body>
+    }
+    function back() {
+      window.location.href = "/";
+    }
+  </script>
+</body>
+
 </html>
