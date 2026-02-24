@@ -240,7 +240,7 @@
 
 <body>
   <!-- Game -->
-  <button id="toggle-editor-btn" onclick="toggleEditor()">Close Editor</button>
+  <button id="toggle-editor-btn" style="display: none;" onclick="toggleEditor()">Open Editor</button>
 
   <div class="game-layer">
     <div id="unity-container">
@@ -256,7 +256,7 @@
     </div>
   </div>
 
-  <div class="editor-panel" id="editor-panel">
+  <div class="editor-panel hidden" id="editor-panel">
     <div class="controls">
       <div class="col-row">
         <div class="col">
@@ -345,10 +345,12 @@ class Main {
       }).then((instance) => {
         unityInstance = instance;
         document.querySelector("#unity-loading-bar").style.display = "none";
+        if (instance.Module) {
+          instance.Module.captureAllKeyboardInput = false;
+        }
       }).catch((message) => { alert(message); });
     };
     document.body.appendChild(script);
-
     // --- UI Functions ---
     function toggleEditor() {
       const panel = document.getElementById('editor-panel');
@@ -601,6 +603,45 @@ class Main {
       const isHidden = panel.classList.toggle('hidden');
       btn.textContent = isHidden ? 'Open Editor' : 'Close Editor';
     };
+    window.ShowEditorButton = function (objectId) {
+      const btn = document.getElementById('toggle-editor-btn');
+      btn.innerText = "Open Editor"
+      btn.style.display = "flex";
+    }
+    window.HideEditorButton = function (objectId) {
+      const btn = document.getElementById('toggle-editor-btn');
+      const panel = document.getElementById('editor-panel');
+      btn.style.display = "none";
+      panel.classList.add("hidden")
+    }
+    const codeInput = document.getElementById("code");
+    const problemInput = document.getElementById("problem");
+    const langSelect = document.getElementById("lang");
+    const difficultySelect = document.getElementById("difficulty");
+
+    const editableElements = [codeInput, problemInput, langSelect, difficultySelect];
+
+    editableElements.forEach(el => {
+      if (!el) return;
+
+      el.addEventListener("focus", () => {
+        if (unityInstance && unityInstance.Module) {
+          unityInstance.Module.captureAllKeyboardInput = false;
+        }
+      });
+
+      el.addEventListener("blur", () => {
+        if (unityInstance && unityInstance.Module) {
+          unityInstance.Module.captureAllKeyboardInput = true;
+        }
+      });
+
+      el.addEventListener("mousedown", () => {
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+      });
+    });
   </script>
 </body>
 
