@@ -593,6 +593,14 @@ class Main {
     function back() {
       window.location.href = "/";
     }
+    // ประกาศฟังก์ชันให้ Global (window) เพื่อให้ Unity หาเจอ
+    window.ShowCodeEditor = function (objectId) {
+      console.log("Unity บอกให้เปิด Editor ที่เครื่อง: " + objectId);
+      const panel = document.getElementById('editor-panel');
+      const btn = document.getElementById('toggle-editor-btn');
+      const isHidden = panel.classList.toggle('hidden');
+      btn.textContent = isHidden ? 'Open Editor' : 'Close Editor';
+    };
   </script>
 </body>
 
