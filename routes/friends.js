@@ -31,7 +31,7 @@ router.use(verifyToken);
 // 1. Search Users
 router.post('/search', async (req, res) => {
     const { query } = req.body;
-    const myId = req.user.id; 
+    const myId = req.user.id;
 
     const { data: users, error } = await supabase
         .from('users')

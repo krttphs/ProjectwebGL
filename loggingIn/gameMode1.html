@@ -529,11 +529,13 @@ class Main {
             } else {
               output.textContent =
                 "❌ Output ไม่ตรงกับที่ต้องการ\n" +
-                "Expected:\n" +
-                currentQuest.show_expect_output +
-                "\n" +
-                "Got:\n" +
-                result.stdout;
+                "ลบ 25 แต้ม"
+                // "Expected:\n" +
+                // currentQuest.show_expect_output +
+                // "\n" +
+                // "Got:\n" +
+                // result.stdout;
+                updateScore(-25)
             }
           } else if (result.stderr) {
             output.textContent = "Error:\n" + result.stderr;
