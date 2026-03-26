@@ -235,20 +235,6 @@
       border-radius: 10px;
       transition: 0.3s;
     }
-    .waitforUnityLoad{
-      animation: waitforUnityLoad-animate 5s ease-in-out
-    }
-    @keyframes waitforUnityLoad-animate{
-      0%{
-        opacity: 0;
-      }
-      50%{
-        opacity: 0;
-      }
-      100%{
-        opacity: 1;
-      }
-    }
   </style>
 </head>
 
@@ -257,10 +243,6 @@
   <button id="toggle-editor-btn" style="display: none;" onclick="toggleEditor()">Open Editor</button>
 
   <div class="game-layer">
-    <div class="waitforUnityLoad" style="display: flex; position: absolute; z-index: 99; width: 100%; justify-content: center; margin-top: 20px;">
-      <text style="font-size: large;">Score</text>
-      <p id="score-number">0 | 0</p>
-    </div>
     <div id="unity-container">
       <canvas id="unity-canvas"></canvas>
       <div id="unity-loading-bar">
@@ -345,8 +327,13 @@ class Main {
       productName: "My Game",
       productVersion: "2.0.1",
     };
-    canvas.style.width = window.innerWidth + "px";
-    canvas.style.height = window.innerHeight + "px";
+
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      // Mobile handling (ถ้าจำเป็น)
+    } else {
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+    }
 
     document.querySelector("#unity-loading-bar").style.display = "block";
 
@@ -366,7 +353,10 @@ class Main {
     document.body.appendChild(script);
     // --- UI Functions ---
     function toggleEditor() {
-      setEditorOpen(!editorOpen);
+      const panel = document.getElementById('editor-panel');
+      const btn = document.getElementById('toggle-editor-btn');
+      const isHidden = panel.classList.toggle('hidden');
+      btn.textContent = isHidden ? 'Open Editor' : 'Close Editor';
     }
 
     window.addEventListener('resize', () => {
@@ -374,7 +364,7 @@ class Main {
       canvas.style.height = window.innerHeight + "px";
     });
 
-    // ------- จัดการ input ใน editor -------
+    // ------- Judge0 -------
     (function () {
       const code = document.getElementById("code");
       const lineNumbers = document.getElementById("lineNumbers");
@@ -405,13 +395,7 @@ class Main {
 
       updateLineNumbers();
     })();
-    let myScore = 0;
-    let enemyScore = 0;
-    function updateScore(newScore){
-      const scoreNumber = document.getElementById("score-number");
-      myScore+= newScore
-      scoreNumber.textContent = myScore + " | " + enemyScore
-    }
+
     // -------- Judge0 --------
     const runBtn = document.getElementById("runBtn");
     const output = document.getElementById("output");
@@ -521,13 +505,11 @@ class Main {
                 "\nmemory ที่ใช้: " +
                 result.memory +
                 "KB" +
-                "\nรางวัล: " + currentQuest.rewards+
-                "\nได้คะแนน: 50";
-                updateScore(50)
+                "\nรางวัล: " + currentQuest.rewards;
               addReward(currentQuest.rewards)
-              // if (unityInstance) {
-              //   unityInstance.SendMessage("player1", "TriggerAttack");
-              // }
+              if (unityInstance) {
+                unityInstance.SendMessage("player1", "TriggerAttack");
+              }
             } else {
               output.textContent =
                 "❌ Output ไม่ตรงกับที่ต้องการ\n" +
@@ -614,67 +596,13 @@ class Main {
       window.location.href = "/";
     }
     // ประกาศฟังก์ชันให้ Global (window) เพื่อให้ Unity หาเจอ
-    // --- Editor Open/Close State ---
-    let editorOpen = false;
-
-    function setEditorOpen(open) {
-      editorOpen = open;
-      const panel = document.getElementById('editor-panel');
-      const btn = document.getElementById('toggle-editor-btn');
-      const codeTextarea = document.getElementById('code');
-      const unityCanvas = document.getElementById('unity-canvas');
-
-      if (open) {
-        panel.classList.remove('hidden');
-        btn.textContent = 'Close Editor';
-
-        // ปลด Pointer Lock ก่อนทุกอย่าง
-        if (document.pointerLockElement) {
-          document.exitPointerLock();
-        }
-
-        // ตัด Unity canvas ออกจากการรับ focus และ pointer
-        // นี่คือสาเหตุหลักที่ Unity steal focus กลับ — canvas มี tabIndex และ pointerEvents อยู่
-        if (unityCanvas) {
-          unityCanvas.tabIndex = -1;
-          unityCanvas.style.pointerEvents = 'none';
-          unityCanvas.blur();
-        }
-
-        // ปิด Unity keyboard capture
-        if (unityInstance && unityInstance.Module) {
-          unityInstance.Module.captureAllKeyboardInput = false;
-        }
-
-        // รอ 1 frame หลัง pointerLock release แล้ว focus textarea
-        setTimeout(() => {
-          codeTextarea.focus();
-        }, 50);
-
-      } else {
-        panel.classList.add('hidden');
-        btn.textContent = 'Open Editor';
-
-        // คืน canvas ให้ Unity ทำงานตามปกติ
-        if (unityCanvas) {
-          unityCanvas.tabIndex = 0;
-          unityCanvas.style.pointerEvents = 'auto';
-        }
-
-        // คืน keyboard ให้ Unity
-        if (unityInstance && unityInstance.Module) {
-          unityInstance.Module.captureAllKeyboardInput = true;
-        }
-
-        if (unityCanvas) unityCanvas.focus();
-      }
-    }
-
     window.ShowCodeEditor = function (objectId) {
       console.log("Unity บอกให้เปิด Editor ที่เครื่อง: " + objectId);
-      setEditorOpen(!editorOpen);
+      const panel = document.getElementById('editor-panel');
+      const btn = document.getElementById('toggle-editor-btn');
+      const isHidden = panel.classList.toggle('hidden');
+      btn.textContent = isHidden ? 'Open Editor' : 'Close Editor';
     };
-
     window.ShowEditorButton = function (objectId) {
       const btn = document.getElementById('toggle-editor-btn');
       btn.innerText = "Open Editor"
@@ -682,10 +610,10 @@ class Main {
     }
     window.HideEditorButton = function (objectId) {
       const btn = document.getElementById('toggle-editor-btn');
+      const panel = document.getElementById('editor-panel');
       btn.style.display = "none";
-      setEditorOpen(false);
+      panel.classList.add("hidden")
     }
-
     const codeInput = document.getElementById("code");
     const problemInput = document.getElementById("problem");
     const langSelect = document.getElementById("lang");
@@ -695,27 +623,24 @@ class Main {
 
     editableElements.forEach(el => {
       if (!el) return;
-      el.addEventListener("mousedown", () => {
-        if (document.pointerLockElement) {
-          document.exitPointerLock();
-        }
+
+      el.addEventListener("focus", () => {
         if (unityInstance && unityInstance.Module) {
           unityInstance.Module.captureAllKeyboardInput = false;
         }
       });
-    });
 
-    // Unity bind keyboard listeners ที่ window ด้วย capture:true
-    // วิธีเดียวที่ตัดได้คือดักที่ window capture phase ก่อน Unity
-    // แล้วเช็คว่า activeElement เป็น textarea -> stopImmediatePropagation ตัด Unity
-    // แต่ไม่ preventDefault เพื่อให้ browser ยังแสดงตัวอักษรใน textarea ได้ปกติ
-    ['keydown', 'keypress', 'keyup'].forEach(evtType => {
-      window.addEventListener(evtType, (e) => {
-        if (document.activeElement === codeInput) {
-          e.stopImmediatePropagation();
-          // ไม่ preventDefault — ให้ browser จัดการ input ตามปกติ
+      el.addEventListener("blur", () => {
+        if (unityInstance && unityInstance.Module) {
+          unityInstance.Module.captureAllKeyboardInput = true;
         }
-      }, true); // capture:true — ทำงานก่อน Unity listener
+      });
+
+      el.addEventListener("mousedown", () => {
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+      });
     });
   </script>
 </body>
