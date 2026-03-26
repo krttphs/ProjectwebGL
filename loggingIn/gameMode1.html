@@ -236,16 +236,13 @@
       transition: 0.3s;
     }
     .waitforUnityLoad{
-      animation: waitforUnityLoad-animate 5s ease-in-out
+      animation: waitforUnityLoad-animate 10s ease-in-out forwards
     }
     @keyframes waitforUnityLoad-animate{
-      0%{
+      from{
         opacity: 0;
       }
-      50%{
-        opacity: 0;
-      }
-      100%{
+      to{
         opacity: 1;
       }
     }
@@ -257,7 +254,7 @@
   <button id="toggle-editor-btn" style="display: none;" onclick="toggleEditor()">Open Editor</button>
 
   <div class="game-layer">
-    <div class="waitforUnityLoad" style="display: flex; position: absolute; z-index: 99; width: 100%; justify-content: center; margin-top: 20px;">
+    <div id="score-board" class="waitforUnityLoad" style="display: flex; position: absolute; z-index: 99; width: 100%; justify-content: center; margin-top: 20px; opacity: 0; pointer-events: none;">
       <text style="font-size: large;">Score</text>
       <p id="score-number">0 | 0</p>
     </div>
@@ -358,6 +355,7 @@ class Main {
       }).then((instance) => {
         unityInstance = instance;
         document.querySelector("#unity-loading-bar").style.display = "none";
+        document.getElementById("score-board").classList.add("waitforUnityLoad")
         if (instance.Module) {
           instance.Module.captureAllKeyboardInput = false;
         }
