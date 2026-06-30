@@ -404,11 +404,10 @@ class Main {
       updateLineNumbers();
     })();
     let myScore = 0;
-    let enemyScore = 0;
     function updateScore(newScore){
       const scoreNumber = document.getElementById("score-number");
       myScore+= newScore
-      scoreNumber.textContent = myScore + " | " + enemyScore
+      scoreNumber.textContent = myScore
     }
     // -------- Judge0 --------
     const runBtn = document.getElementById("runBtn");

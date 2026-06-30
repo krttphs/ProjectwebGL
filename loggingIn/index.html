@@ -177,7 +177,7 @@
         class="flex-grow flex items-center justify-center gap-8 w-full hidden"
       >
         <div
-          onclick="goToGameMode1()"
+          onclick="findMatch()"
           class="game-card cursor-pointer group w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden"
         >
           <div
@@ -205,9 +205,7 @@
             >
               Turnbased
             </h3>
-            <p class="text-gray-400 text-sm mb-6">
-              1 vs 1
-            </p>
+            <p class="text-gray-400 text-sm mb-6">1 vs 1</p>
 
             <button
               class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
@@ -446,6 +444,42 @@
           </button>
         </div>
       </div>
+      <div
+        id="lobbyModal"
+        class="hidden fixed inset-0 z-[100] bg-black/80 flex justify-center items-center opacity-0 transition-opacity duration-300"
+      >
+        <div
+          class="glass-panel w-[400px] rounded-3xl p-6 flex flex-col items-center"
+        >
+          <h2 class="text-2xl font-bold text-white mb-4">
+            <i class="fa-solid fa-gamepad text-cyan-400 mr-2"></i> GAME LOBBY
+          </h2>
+
+          <div id="lobbyStatus" class="text-cyan-300 mb-6 animate-pulse">
+            Waiting for players...
+          </div>
+          <div
+            id="playerCountDisplay"
+            class="text-2xl font-bold text-yellow-400 mb-6 drop-shadow-md"
+          >
+            Loading...
+          </div>
+          <button
+            id="startGameBtn"
+            onclick="startGameLobby()"
+            class="hidden w-full py-3 bg-gradient-to-r from-green-500 to-emerald-400 rounded-xl font-bold text-white shadow-lg shadow-green-500/50 hover:scale-105 transition-all mb-3"
+          >
+            START GAME
+          </button>
+
+          <button
+            onclick="leaveLobby()"
+            class="w-full py-2 bg-red-500/20 text-red-400 rounded-xl font-bold border border-red-500/50 hover:bg-red-500 hover:text-white transition-all"
+          >
+            LEAVE LOBBY
+          </button>
+        </div>
+      </div>
     </div>
     <script>
       //userId เรา ที่ server ส่งมาให้
@@ -458,9 +492,9 @@
 
           if (response.ok) {
             document.getElementById("username").textContent = data.username;
-            MY_USER_ID = data.id
+            MY_USER_ID = data.id;
           } else {
-            window.location.href = "/login.html";
+            window.location.href = "/login";
           }
         } catch (err) {
           console.log("Error fetching user's data: ", err);
@@ -832,7 +866,7 @@
       let currentRoomId = null;
 
       async function openChat(roomId, friendName) {
-        closeFriendModal()  
+        closeFriendModal();
         currentRoomId = roomId;
 
         // แสดง popup
@@ -920,8 +954,8 @@
 
         const div = document.createElement("div");
         div.className = "flex";
-        console.log(msg.sender_id)
-        console.log(MY_USER_ID)
+        console.log(msg.sender_id);
+        console.log(MY_USER_ID);
         div.classList.add(
           msg.sender_id === MY_USER_ID ? "justify-end" : "justify-start",
         );
@@ -936,6 +970,135 @@
         box.scrollTop = box.scrollHeight;
       }
 
+      //หาห้อง
+      let currentLobbyId = null;
+      let lobbyChannel = null;
+      let isLeader = false;
+
+      async function findMatch() {
+        try {
+          const res = await fetch("/api/game/find-match", { method: "POST" });
+          const data = await res.json();
+
+          if (!res.ok) {
+            console.error("Backend Error:", data.error);
+            alert("หาห้องไม่สำเร็จ: " + data.error);
+            return; //ไม่ต้องเปิดหน้าต่าง Lobby
+          }
+
+          currentLobbyId = data.roomId;
+          isLeader = data.isLeader;
+
+          document.getElementById("playerCountDisplay").innerText =
+            `Players: ${data.playerCount} / 4`;
+
+          const lobbyModal = document.getElementById("lobbyModal");
+          lobbyModal.classList.remove("hidden");
+          requestAnimationFrame(() => lobbyModal.classList.remove("opacity-0"));
+
+          if (isLeader) {
+            document.getElementById("startGameBtn").classList.remove("hidden");
+            document.getElementById("lobbyStatus").innerText =
+              "You are the Room Leader";
+          } else {
+            document.getElementById("startGameBtn").classList.add("hidden");
+            document.getElementById("lobbyStatus").innerText =
+              "Waiting for Leader to start...";
+          }
+
+          subscribeLobbyRealtime(currentLobbyId);
+        } catch (err) {
+          console.error("Matchmaking error:", err);
+        }
+      }
+
+      //ฟังก์ชันดักจับ Realtime เหมือนตอนทำระบบ Chat
+      function subscribeLobbyRealtime(roomId) {
+        if (lobbyChannel) {
+          supabase.removeChannel(lobbyChannel);
+        }
+        lobbyChannel = supabase
+          .channel("lobby-" + roomId)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "game_rooms",
+              filter: `id=eq.${roomId}`,
+            },
+            (payload) => {
+              // เมื่อ Leader สั่งเปลี่ยนสถานะห้องเป็น 'playing'
+              if (payload.new.status === "playing" && payload.eventType === "UPDATE") {
+                // ย้ายผู้เล่นทุกคนที่อยู่ในห้องนี้ไปหน้า gamemode1
+                // แนบ roomId ไปด้วย เพื่อให้ Unity หรือหน้า gamemode1 รู้ว่าเล่นอยู่ห้องไหน
+                window.location.href = `/gamemode1?roomId=${roomId}`;
+              }
+              if (payload.eventType === "DELETE") {
+                alert("ห้องถูกยุบแล้ว.");
+                leaveLobby();
+              }
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "room_players",
+              filter: `room_id=eq.${roomId}`,
+            },
+            async (payload) => {
+              // เมื่อมีคนเข้าหรือออก ยิง API ไปอัปเดตตัวเลขใหม่ทันที
+              try {
+                const res = await fetch(`/api/game/${roomId}/players`);
+                const data = await res.json();
+                document.getElementById("playerCountDisplay").innerText =
+                  `Players: ${data.count} / 4`;
+              } catch (err) {
+                console.error("Failed to fetch player count", err);
+              }
+            },
+          )
+          .subscribe();
+      }
+
+      //ฟังก์ชันสำหรับ Leader กดเริ่มเกม
+      async function startGameLobby() {
+        if (!currentLobbyId || !isLeader) return;
+
+        // ยิง API ไปอัปเดตสถานะห้องเป็น 'playing'
+        try {
+          await fetch("/api/game/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomId: currentLobbyId }),
+          });
+        } catch (err) {
+          console.error("error message: ", err);
+        }
+
+        // (หลังจากยิงผ่าน Backend จะไป trigger Supabase Realtime ที่ทุกคนรออยู่ให้ทำงานอัตโนมัติ)
+      }
+
+      async function leaveLobby() {
+        try {
+          await fetch("/api/game/leave", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomId: currentLobbyId }),
+          });
+        } catch (err) {
+          console.error("Failed to disconnect from server properly:", err);
+        }
+        if (lobbyChannel) supabase.removeChannel(lobbyChannel);
+        currentLobbyId = null;
+        document.getElementById("lobbyModal").classList.add("opacity-0");
+        setTimeout(
+          () => document.getElementById("lobbyModal").classList.add("hidden"),
+          300,
+        );
+      }
       // Initial Load for Badge check
       loadFriendRequests();
       fetchBalance();

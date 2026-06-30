@@ -1,0 +1,43 @@
+const supabase = require("../config/supabaseClient"); // อย่าลืม require supabase ให้ถูก path
+
+const requireAuth = async (req, res, next) => {
+  const token = req.cookies.token;
+
+  // ฟังก์ชันแยกสำหรับจัดการกรณีที่ไม่มีสิทธิ์เข้าถึง
+  const handleUnauthorized = () => {
+    // ถ้า Request เป็น API ให้ส่ง JSON กลับไป
+    if (req.originalUrl.startsWith("/api/")) {
+      return res.status(401).json({ error: "Unauthorized: Token ไม่ถูกต้องหรือหมดอายุ" });
+    }
+    // ถ้าเป็นการเปิดหน้าเว็บ ให้เด้งไปหน้า login
+    return res.redirect("/login");
+  };
+
+  if (!token) {
+    return handleUnauthorized();
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      console.error("Supabase Auth Error:", error?.message);
+      return handleUnauthorized();
+    }
+    req.user = user; 
+    next();
+  } catch (err) {
+    console.error("Middleware Error:", err.message);
+    return handleUnauthorized();
+  }
+};
+
+const hasAuth = (req, res, next) => {
+  const token = req.cookies.token;
+  if (token) {
+    return res.redirect("/index");
+  }
+  next();
+};
+
+module.exports = { requireAuth, hasAuth };

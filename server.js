@@ -10,6 +10,9 @@ const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
 const friendsRoutes = require("./routes/friends");
 const chatRoutes = require("./routes/chat");
+const lobbyRoutes = require("./routes/lobby")
+
+const { requireAuth , hasAuth} = require("./middleware/authMiddleware")
 
 const app = express();
 
@@ -20,29 +23,15 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-const requireAuth = (req,res,next) =>{
-  const token = req.cookies.token;
 
-  if(!token){
-    return res.redirect("/login");
-  }
-  next();
-}
-
-const hasAuth = (req,res,next) =>{
-  const token = req.cookies.token;
-  if(token){
-    return res.redirect("/");
-  }
-  next();
-}
 
 // Routes
 app.use("/api", questRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friends",friendsRoutes);
-app.use("/api/chat",chatRoutes)
+app.use("/api/chat",chatRoutes);
+app.use("/api/game",lobbyRoutes);
 
 // Frontend Route
 app.get("/", (req, res) => {
