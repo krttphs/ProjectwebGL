@@ -403,11 +403,24 @@ class Main {
 
       updateLineNumbers();
     })();
+    //ดึง roomId จาก URL (ที่ส่งมาจาก lobby)
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentRoomId = urlParams.get('roomId');
     let myScore = 0;
-    function updateScore(newScore){
-      const scoreNumber = document.getElementById("score-number");
+    async function updateScore(newScore){
       myScore+= newScore
+      const scoreNumber = document.getElementById("score-number");
       scoreNumber.textContent = myScore
+      try{
+        await fetch("/api/game/updatePlayerScore",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({roomId:currentRoomId,score:myScore})
+        })
+      } catch(err){
+        console.error("error message: ",err)
+      }
+     
     }
     // -------- Judge0 --------
     const runBtn = document.getElementById("runBtn");
@@ -496,7 +509,7 @@ class Main {
               body: JSON.stringify({
                 source_code: code,
                 language_id: lang,
-                stdin: currentQuest.inputSubmit, // ✅ ใช้ inputSubmit จากโจทย์
+                stdin: currentQuest.inputSubmit, //ใช้ inputSubmit จากโจทย์
               }),
             }
           );
@@ -509,7 +522,7 @@ class Main {
               normalize(result.stdout) ===
               normalize(currentQuest.expectedOutput)
             ) {
-              // ✅ เทียบกับ expectedOutput
+              //เทียบกับ expectedOutput
               output.textContent =
                 "ถูกต้อง!! ✅" +
                 "\nเวลาที่ใช้: " +

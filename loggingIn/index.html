@@ -977,7 +977,7 @@
 
       async function findMatch() {
         try {
-          const res = await fetch("/api/game/find-match", { method: "POST" });
+          const res = await fetch("/api/lobby/find-match", { method: "POST" });
           const data = await res.json();
 
           if (!res.ok) {
@@ -1051,7 +1051,7 @@
             async (payload) => {
               // เมื่อมีคนเข้าหรือออก ยิง API ไปอัปเดตตัวเลขใหม่ทันที
               try {
-                const res = await fetch(`/api/game/${roomId}/players`);
+                const res = await fetch(`/api/lobby/${roomId}/players`);
                 const data = await res.json();
                 document.getElementById("playerCountDisplay").innerText =
                   `Players: ${data.count} / 4`;
@@ -1069,7 +1069,7 @@
 
         // ยิง API ไปอัปเดตสถานะห้องเป็น 'playing'
         try {
-          await fetch("/api/game/start", {
+          await fetch("/api/lobby/start", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ roomId: currentLobbyId }),
@@ -1083,7 +1083,7 @@
 
       async function leaveLobby() {
         try {
-          await fetch("/api/game/leave", {
+          await fetch("/api/lobby/leave", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ roomId: currentLobbyId }),

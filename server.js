@@ -10,7 +10,8 @@ const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
 const friendsRoutes = require("./routes/friends");
 const chatRoutes = require("./routes/chat");
-const lobbyRoutes = require("./routes/lobby")
+const lobbyRoutes = require("./routes/lobby");
+const gameRoutes = require("./routes/game")
 
 const { requireAuth , hasAuth} = require("./middleware/authMiddleware")
 
@@ -31,7 +32,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friends",friendsRoutes);
 app.use("/api/chat",chatRoutes);
-app.use("/api/game",lobbyRoutes);
+app.use("/api/lobby",lobbyRoutes);
+app.use("/api/game",gameRoutes);
 
 // Frontend Route
 app.get("/", (req, res) => {
