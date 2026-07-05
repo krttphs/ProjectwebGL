@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const supabase = require("../config/supabaseClient");
+const {requireAuth,hasAuth} = require("../middleware/authMiddleware");
 
 // Route Register
-router.post("/register", async (req, res) => {
+router.post("/register",hasAuth, async (req, res) => {
   const { tempEmail, tempPassword, username } = req.body; // Supabase ใช้ email เป็นหลัก
   if (!tempEmail || !tempPassword || !username) {
     return res
@@ -56,7 +57,7 @@ router.post("/register", async (req, res) => {
 });
 
 // Route Login
-router.post("/login", async (req, res) => {
+router.post("/login", hasAuth,async (req, res) => {
   const { email, password } = req.body;
 
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -74,43 +75,30 @@ router.post("/login", async (req, res) => {
 });
 
 //route สำหรับไว้ดึง email id username
-router.get("/me", async (req, res) => {
-  const token = req.cookies.token;
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
-
-  if (error || !user) {
-    return res.status(401).json({ error: "Token ไม่ถูกต้อง หรือหมดอายุ" });
-  }
+router.get("/me", requireAuth,async (req, res) => {
+  const userId = req.user.id;
+  const userEmail = req.user.email;
 
   // ดึงข้อมูล profile จาก table users 
   const { data: profile, error: profileError } = await supabase
     .from("users")
     .select("username, coins")
-    .eq("id", user.id)
+    .eq("id", req.user.id)
     .single();
 
   if (profileError) {
     return res.status(500).json({ error: "ไม่พบข้อมูลผู้ใช้" });
   }
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    maxAge: 60 * 60 * 1000,
-  });
-
   res.json({
-    id: user.id,
-    email: user.email,
+    id: userId,
+    email: userEmail,
     username: profile.username,
     coins: profile.coins,
   });
 });
 
-router.post("/logout", (req, res) => {
+router.post("/logout",requireAuth, (req, res) => {
   res.clearCookie("token"); // ลบ Cookie ออก
   res.json({ message: "ออกจากระบบแล้ว" });
 });

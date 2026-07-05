@@ -254,9 +254,9 @@
   <button id="toggle-editor-btn" style="display: none;" onclick="toggleEditor()">Open Editor</button>
 
   <div class="game-layer">
-    <div id="score-board" style="display: flex; position: absolute; z-index: 99; width: 100%; justify-content: center; margin-top: 20px; opacity: 0; pointer-events: none;">
-      <text style="font-size: large;">Score</text>
-      <p id="score-number">0 | 0</p>
+    <div id="score-board" style="display: flex; position: absolute; z-index: 99; width: 100%; justify-content: center; margin-top: 20px; opacity: 0; pointer-events: none; flex-direction: column; align-items: center;">
+      <h3 style="font-size: large;">Score</h3>
+      <h2 id="score-number" style="margin-top: -10px">0</h2>
     </div>
     <div id="unity-container">
       <canvas id="unity-canvas"></canvas>
