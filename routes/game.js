@@ -60,11 +60,13 @@ router.post("/endgame/:roomId", requireAuth, async (req, res) => {
 
       if(updateScoreError) throw updateScoreError;
       
-      await supabase
+      const { error: claimError } = await supabase
       .from("room_players")
       .update({reward_claimed:true})
-      .eq("room_id",req,params.roomId)
+      .eq("room_id",req.params.roomId)
       .eq("player_id",req.user.id)
+      
+      if(claimError) throw claimError
       
     }
 
