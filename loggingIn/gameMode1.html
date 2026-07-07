@@ -735,73 +735,85 @@ class Main {
       // --- Editor Open/Close State ---
       let editorOpen = false;
 
-      function setEditorOpen(open) {
-        editorOpen = open;
-        const panel = document.getElementById("editor-panel");
-        const btn = document.getElementById("toggle-editor-btn");
-        const codeTextarea = document.getElementById("code");
-        const unityCanvas = document.getElementById("unity-canvas");
+function notifyUnityEditorClosed() {
+  if (unityInstance && currentObjectId) {
+    console.log("📤 ส่งกลับ Unity:", currentObjectId);
+    // ส่งให้คนที่เรียก และฟังค์ชั่นไหนต้องทำต่อ
+    unityInstance.SendMessage(
+      currentObjectId,
+      "OnWebEditorClosed"
+    );
+  } else {
+    console.warn("❌ ไม่มี objectId หรือ unityInstance", currentObjectId);
+  }
+}
 
-        if (open) {
-          panel.classList.remove("hidden");
-          btn.textContent = "Close Editor";
+function setEditorOpen(open) {
+    editorOpen = open;
+    const panel = document.getElementById("editor-panel");
+    const btn = document.getElementById("toggle-editor-btn");
+    const codeTextarea = document.getElementById("code");
+    const unityCanvas = document.getElementById("unity-canvas");
 
-          // ปลด Pointer Lock ก่อนทุกอย่าง
-          if (document.pointerLockElement) {
+    if (open) {
+        panel.classList.remove("hidden");
+        btn.textContent = "Close Editor";
+
+        if (document.pointerLockElement) {
             document.exitPointerLock();
-          }
+        }
 
-          // ตัด Unity canvas ออกจากการรับ focus และ pointer
-          // นี่คือสาเหตุหลักที่ Unity steal focus กลับ — canvas มี tabIndex และ pointerEvents อยู่
-          if (unityCanvas) {
+        if (unityCanvas) {
             unityCanvas.tabIndex = -1;
             unityCanvas.style.pointerEvents = "none";
             unityCanvas.blur();
-          }
+        }
 
-          // ปิด Unity keyboard capture
-          if (unityInstance && unityInstance.Module) {
+        if (unityInstance && unityInstance.Module) {
             unityInstance.Module.captureAllKeyboardInput = false;
-          }
+        }
 
-          // รอ 1 frame หลัง pointerLock release แล้ว focus textarea
-          setTimeout(() => {
+        setTimeout(() => {
             codeTextarea.focus();
-          }, 50);
-        } else {
-          panel.classList.add("hidden");
-          btn.textContent = "Open Editor";
+        }, 50);
 
-          // คืน canvas ให้ Unity ทำงานตามปกติ
-          if (unityCanvas) {
+    } else {
+        panel.classList.add("hidden");
+        btn.textContent = "Open Editor";
+        notifyUnityEditorClosed();
+
+        if (unityCanvas) {
             unityCanvas.tabIndex = 0;
             unityCanvas.style.pointerEvents = "auto";
-          }
-
-          // คืน keyboard ให้ Unity
-          if (unityInstance && unityInstance.Module) {
-            unityInstance.Module.captureAllKeyboardInput = true;
-          }
-
-          if (unityCanvas) unityCanvas.focus();
         }
-      }
 
-      window.ShowCodeEditor = function (objectId) {
-        console.log("Unity บอกให้เปิด Editor ที่เครื่อง: " + objectId);
-        setEditorOpen(!editorOpen);
-      };
+        if (unityInstance && unityInstance.Module) {
+            unityInstance.Module.captureAllKeyboardInput = true;
+        }
 
-      window.ShowEditorButton = function (objectId) {
-        const btn = document.getElementById("toggle-editor-btn");
-        btn.innerText = "Open Editor";
-        btn.style.display = "flex";
-      };
-      window.HideEditorButton = function (objectId) {
-        const btn = document.getElementById("toggle-editor-btn");
-        btn.style.display = "none";
-        setEditorOpen(false);
-      };
+        if (unityCanvas) {
+            unityCanvas.focus();
+        }
+    }
+}
+let currentObjectId = null; // ⭐ เพิ่ม
+    window.ShowCodeEditor = function (objectId) {
+      console.log("Unity บอกให้เปิด Editor ที่เครื่อง: " + objectId);
+      currentObjectId = objectId;
+      setEditorOpen(!editorOpen);
+    };
+
+    window.ShowEditorButton = function (objectId) {
+      const btn = document.getElementById('toggle-editor-btn');
+      btn.innerText = "Open Editor"
+      btn.style.display = "flex";
+    }
+    window.HideEditorButton = function (objectId) {
+      const btn = document.getElementById('toggle-editor-btn');
+      btn.style.display = "none";
+      currentObjectId = objectId;
+      setEditorOpen(false);
+    }
 
       const codeInput = document.getElementById("code");
       const problemInput = document.getElementById("problem");
