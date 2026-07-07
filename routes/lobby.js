@@ -81,17 +81,24 @@ router.post("/find-match", requireAuth, async (req, res) => {
 });
 
 router.post("/start", requireAuth, async (req, res) => {
-  const { roomId } = req.body;
+  const roomId = req.body.roomId;
   const userId = req.user.id;
-
+  try{
+    const timeEnd = new Date(Date.now() + req.body.time_end * 1000).toISOString();
   // อัปเดตสถานะห้องเป็น 'playing'
-  await supabase
+  const {error} = await supabase
     .from("game_rooms")
-    .update({ status: "playing" })
+    .update({ status: "playing" ,end_time: timeEnd})
     .eq("id", roomId)
     .eq("leader_id", userId);
-
-  res.json({ success: true });
+    
+    if(error) throw error;
+    
+    res.json({ success: true });
+  } catch(err){
+    console.error("Start game failed: ",err)
+    res.status(500).json({error:"Failed to start game"})
+  }
 });
 
 router.delete("/leave", requireAuth, async (req, res) => {
@@ -100,9 +107,9 @@ router.delete("/leave", requireAuth, async (req, res) => {
   try {
     const { data: room } = await supabase
       .from("game_rooms")
-      .select("leader_id","status")
+      .select("leader_id , status")
       .eq("id", roomId)
-      .single();
+      .maybeSingle();
 
     if (room && room.leader_id === userId) {
       await supabase.from("room_players").delete().eq("room_id", roomId);

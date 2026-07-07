@@ -12,24 +12,29 @@ router.post("/register",hasAuth, async (req, res) => {
       .json({ error: "กรุณากรอก Email และ Password และ username ให้ครบถ้วน" });
   }
 
-  const { data: existing } = await supabase
+  const { data: existing_username, error: checkError_username } = await supabase
     .from("users")
     .select("id")
     .eq("username", username)
-    .single();
+    .maybeSingle();
 
-  if (existing) {
+  if (existing_username) {
     return res.status(400).json({ error: "Username ซ้ำ" });
   }
-  const { data: existingEmail } = await supabase
+
+  if (checkError_username) return res.status(500).json({ error: "Database error" });
+  
+  const { data: existing_email, error: checkError_email } = await supabase
     .from("users")
     .select("id")
     .eq("email", tempEmail)
-    .single();
+    .maybeSingle();
 
-  if (existingEmail) {
+  if (existing_email) {
     return res.status(400).json({ error: "Email นี้ถูกใช้งานแล้ว" });
   }
+
+  if (checkError_email) return res.status(500).json({ error: "Database error" });
 
   const { data, error } = await supabase.auth.signUp({
     email: tempEmail,

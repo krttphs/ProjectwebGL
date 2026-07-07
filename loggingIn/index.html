@@ -113,6 +113,15 @@
           transform: rotate(0deg);
         }
       }
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
     </style>
   </head>
   <body class="text-white h-screen w-screen relative">
@@ -463,6 +472,17 @@
             class="text-2xl font-bold text-yellow-400 mb-6 drop-shadow-md"
           >
             Loading...
+          </div>
+          <div id="time_input_area" class="hidden flex flex-row gap-5">
+            <label for="time_end">Time</label>
+            <input
+              type="number"
+              id="time_end"
+              name="time_end"
+              min="0"
+              style="margin-bottom: 10px; border-width: 2px; text-align: center"
+            />
+            <h2>Second</h2>
           </div>
           <button
             id="startGameBtn"
@@ -998,10 +1018,12 @@
 
           if (isLeader) {
             document.getElementById("startGameBtn").classList.remove("hidden");
+            document.getElementById("time_input_area").classList.remove("hidden");
             document.getElementById("lobbyStatus").innerText =
               "You are the Room Leader";
           } else {
             document.getElementById("startGameBtn").classList.add("hidden");
+            document.getElementById("time_input_area").classList.add("hidden");
             document.getElementById("lobbyStatus").innerText =
               "Waiting for Leader to start...";
           }
@@ -1029,7 +1051,10 @@
             },
             (payload) => {
               // เมื่อ Leader สั่งเปลี่ยนสถานะห้องเป็น 'playing'
-              if (payload.new.status === "playing" && payload.eventType === "UPDATE") {
+              if (
+                payload.new.status === "playing" &&
+                payload.eventType === "UPDATE"
+              ) {
                 // ย้ายผู้เล่นทุกคนที่อยู่ในห้องนี้ไปหน้า gamemode1
                 // แนบ roomId ไปด้วย เพื่อให้ Unity หรือหน้า gamemode1 รู้ว่าเล่นอยู่ห้องไหน
                 window.location.href = `/gamemode1?roomId=${roomId}`;
@@ -1066,18 +1091,23 @@
       //ฟังก์ชันสำหรับ Leader กดเริ่มเกม
       async function startGameLobby() {
         if (!currentLobbyId || !isLeader) return;
-
-        // ยิง API ไปอัปเดตสถานะห้องเป็น 'playing'
         try {
-          await fetch("/api/lobby/start", {
+          let time_end_value = document.getElementById("time_end").value
+          if(!time_end_value || isNaN(time_end_value) || time_end_value <= 0){
+            time_end_value = 300
+          }
+          const res = await fetch("/api/lobby/start", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roomId: currentLobbyId }),
+            body: JSON.stringify({ roomId: currentLobbyId,time_end:parseInt(time_end_value) }),
           });
+          if(!res.ok){
+            const data = await res.json();
+            alert("ไม่สามารถเริ่มเกมได้: "+data.error)
+          }
         } catch (err) {
           console.error("error message: ", err);
         }
-
         // (หลังจากยิงผ่าน Backend จะไป trigger Supabase Realtime ที่ทุกคนรออยู่ให้ทำงานอัตโนมัติ)
       }
 
@@ -1099,6 +1129,15 @@
           300,
         );
       }
+
+      const time_input = document.getElementById("time_end");
+
+      time_input.addEventListener("keydown", (e) => {
+        if (e.key === "-" || e.key === "e") {
+          e.preventDefault();
+        }
+      });
+
       // Initial Load for Badge check
       loadFriendRequests();
       fetchBalance();
