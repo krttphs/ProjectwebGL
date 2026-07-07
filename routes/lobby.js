@@ -4,6 +4,23 @@ const supabase = require("../config/supabaseClient");
 
 const { requireAuth } = require("../middleware/authMiddleware");
 
+async function createRoom(userId) {
+  const { data: newRoom, error: createError } = await supabase
+    .from("game_rooms")
+    .insert({ leader_id: userId, status: "waiting" })
+    .select()
+    .single();
+
+  if (createError) throw createError;
+
+  const newRoomId = newRoom.id;
+  await supabase
+    .from("room_players")
+    .insert({ room_id: newRoomId, player_id: userId });
+
+  return newRoomId;
+}
+
 router.post("/find-match", requireAuth, async (req, res) => {
   try {
     if (!req.user || !req.user.id) {
@@ -23,26 +40,32 @@ router.post("/find-match", requireAuth, async (req, res) => {
 
     let roomId;
     let isLeader = false;
-
+    //rooms = [{id:"123",leader_id:"555",status:"waiting",created_at:"2026-06-07"}] , [{name:"krit",age:21},"b","c"]
     if (rooms && rooms.length > 0) {
-      roomId = rooms[0].id;
-      await supabase
+      const { count } = await supabase
         .from("room_players")
-        .insert({ room_id: roomId, player_id: userId });
+        .select("*", { count: "exact", head: true })
+        .eq("room_id", rooms[0].id);
+
+      if (count < 4) {
+        roomId = rooms[0].id;
+        await supabase
+          .from("room_players")
+          .insert({ room_id: roomId, player_id: userId });
+
+        if (count + 1 === 4) {
+          await supabase
+            .from("game_rooms")
+            .update({ status: "full" })
+            .eq("id", roomId);
+        }
+      } else {
+        isLeader = true;
+        roomId = await createRoom(userId);
+      }
     } else {
       isLeader = true;
-      const { data: newRoom, error: createError } = await supabase
-        .from("game_rooms")
-        .insert({ leader_id: userId, status: "waiting" })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-
-      roomId = newRoom.id;
-      await supabase
-        .from("room_players")
-        .insert({ room_id: roomId, player_id: userId });
+      roomId = await createRoom(userId);
     }
 
     const { count } = await supabase
@@ -77,7 +100,7 @@ router.delete("/leave", requireAuth, async (req, res) => {
   try {
     const { data: room } = await supabase
       .from("game_rooms")
-      .select("leader_id")
+      .select("leader_id","status")
       .eq("id", roomId)
       .single();
 
@@ -86,12 +109,18 @@ router.delete("/leave", requireAuth, async (req, res) => {
       await supabase.from("game_rooms").delete().eq("id", roomId);
     } else {
       await supabase
-        .from('room_players')
+        .from("room_players")
         .delete()
-        .eq('room_id', roomId)
-        .eq('player_id', userId);
-    }
+        .eq("room_id", roomId)
+        .eq("player_id", userId);
 
+      if (room.status === "full") {
+        await supabase
+          .from("game_rooms")
+          .update({ status: "waiting" })
+          .eq("id", roomId);
+      }
+    }
     res.json({ success: true });
   } catch (err) {
     console.error("Error leaving room:", err);
