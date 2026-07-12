@@ -255,7 +255,7 @@
     <button
       id="toggle-editor-btn"
       style="display: none"
-      onclick="toggleEditor()"
+      onclick="toggleWebUI()"
     >
       Open Editor
     </button>
@@ -310,6 +310,7 @@
         border-radius: 8px;
         font-family: monospace;
         border: 1px solid #50fa7b;
+        display: none;
       "
     >
       00:00
@@ -404,7 +405,7 @@
         <div class="col">
           <label>Quest Description</label>
           <textarea id="problem" class="input-problem" readonly>
-กรุณาสุ่มโจทย์เพื่อเริ่มเล่น...</textarea
+      กรุณาสุ่มโจทย์เพื่อเริ่มเล่น...</textarea
           >
         </div>
 
@@ -452,6 +453,54 @@ class Main {
 
       <div id="output">Output logs will appear here...</div>
     </div>
+    <div class="editor-panel hidden" id="terminal-panel" style="width: 500px">
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        "
+      >
+        <label>Server Terminal</label>
+        <button
+          onclick="setTerminalOpen(false)"
+          style="
+            background: #ff5555;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+          "
+        >
+          Close
+        </button>
+      </div>
+      <div
+        class="editor-wrap"
+        style="
+          flex: 1;
+          background: #000;
+          padding: 10px;
+          border: 1px solid #50fa7b;
+        "
+      >
+        <div
+          id="terminal-output"
+          style="
+            color: #50fa7b;
+            font-family: var(--editor-font);
+            font-size: 14px;
+            white-space: pre-wrap;
+            height: 100%;
+            overflow-y: auto;
+          "
+        >
+          Welcome to Server Terminal LTS root@server:~# _
+        </div>
+      </div>
+    </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var unityInstance = null; // เก็บ instance ไว้ใช้ภายนอก
@@ -496,8 +545,16 @@ class Main {
       };
       document.body.appendChild(script);
       // --- UI Functions ---
-      function toggleEditor() {
-        setEditorOpen(!editorOpen);
+      let currentObjectId = null;
+      let currentObjectType = "editor";
+      let editorOpen = false;
+      let terminalOpen = false;
+      function toggleWebUI() {
+        if (currentObjectType === "terminal") {
+          setTerminalOpen(!terminalOpen);
+        } else {
+          setEditorOpen(!editorOpen);
+        }
       }
 
       window.addEventListener("resize", () => {
@@ -733,87 +790,144 @@ class Main {
       }
       // ประกาศฟังก์ชันให้ Global (window) เพื่อให้ Unity หาเจอ
       // --- Editor Open/Close State ---
-      let editorOpen = false;
 
-function notifyUnityEditorClosed() {
-  if (unityInstance && currentObjectId) {
-    console.log("📤 ส่งกลับ Unity:", currentObjectId);
-    // ส่งให้คนที่เรียก และฟังค์ชั่นไหนต้องทำต่อ
-    unityInstance.SendMessage(
-      currentObjectId,
-      "OnWebEditorClosed"
-    );
-  } else {
-    console.warn("❌ ไม่มี objectId หรือ unityInstance", currentObjectId);
-  }
-}
-
-function setEditorOpen(open) {
-    editorOpen = open;
-    const panel = document.getElementById("editor-panel");
-    const btn = document.getElementById("toggle-editor-btn");
-    const codeTextarea = document.getElementById("code");
-    const unityCanvas = document.getElementById("unity-canvas");
-
-    if (open) {
-        panel.classList.remove("hidden");
-        btn.textContent = "Close Editor";
-
-        if (document.pointerLockElement) {
-            document.exitPointerLock();
+      function notifyUnityEditorClosed() {
+        if (unityInstance && currentObjectId) {
+          console.log("📤 ส่งกลับ Unity:", currentObjectId);
+          unityInstance.SendMessage(currentObjectId, "OnWebEditorClosed");
+        } else {
+          console.warn("❌ ไม่มี objectId หรือ unityInstance", currentObjectId);
         }
+      }
 
-        if (unityCanvas) {
+      function setEditorOpen(open) {
+        editorOpen = open;
+        const panel = document.getElementById("editor-panel");
+        const btn = document.getElementById("toggle-editor-btn");
+        const codeTextarea = document.getElementById("code");
+        const unityCanvas = document.getElementById("unity-canvas");
+
+        if (open) {
+          panel.classList.remove("hidden");
+          btn.textContent = "Close Editor";
+
+          if (document.pointerLockElement) {
+            document.exitPointerLock();
+          }
+
+          if (unityCanvas) {
             unityCanvas.tabIndex = -1;
             unityCanvas.style.pointerEvents = "none";
             unityCanvas.blur();
-        }
+          }
 
-        if (unityInstance && unityInstance.Module) {
+          if (unityInstance && unityInstance.Module) {
             unityInstance.Module.captureAllKeyboardInput = false;
-        }
+          }
 
-        setTimeout(() => {
+          setTimeout(() => {
             codeTextarea.focus();
-        }, 50);
+          }, 50);
+        } else {
+          panel.classList.add("hidden");
+          btn.textContent = "Open Editor";
+          notifyUnityEditorClosed();
 
-    } else {
-        panel.classList.add("hidden");
-        btn.textContent = "Open Editor";
-        notifyUnityEditorClosed();
-
-        if (unityCanvas) {
+          if (unityCanvas) {
             unityCanvas.tabIndex = 0;
             unityCanvas.style.pointerEvents = "auto";
-        }
+          }
 
-        if (unityInstance && unityInstance.Module) {
+          if (unityInstance && unityInstance.Module) {
             unityInstance.Module.captureAllKeyboardInput = true;
-        }
+          }
 
-        if (unityCanvas) {
+          if (unityCanvas) {
             unityCanvas.focus();
+          }
         }
-    }
-}
-let currentObjectId = null; // ⭐ เพิ่ม
-    window.ShowCodeEditor = function (objectId) {
-      console.log("Unity บอกให้เปิด Editor ที่เครื่อง: " + objectId);
-      currentObjectId = objectId;
-      setEditorOpen(!editorOpen);
-    };
+      }
 
-    window.ShowEditorButton = function (objectId) {
-      const btn = document.getElementById('toggle-editor-btn');
-      btn.innerText = "Open Editor"
-      btn.style.display = "flex";
-    }
-    window.HideEditorButton = function (objectId) {
-      const btn = document.getElementById('toggle-editor-btn');
-      btn.style.display = "none";
-      currentObjectId = objectId;
-      setEditorOpen(false);
-    }
+      function setTerminalOpen(open) {
+          terminalOpen = open;
+          const panel = document.getElementById("terminal-panel");
+          const btn = document.getElementById("toggle-editor-btn");
+          const unityCanvas = document.getElementById("unity-canvas");
+
+          if (open) {
+              panel.classList.remove("hidden");
+              btn.textContent = "Close Terminal";
+
+              if (document.pointerLockElement) document.exitPointerLock();
+
+              if (unityCanvas) {
+                  unityCanvas.tabIndex = -1;
+                  unityCanvas.style.pointerEvents = "none";
+                  unityCanvas.blur();
+              }
+
+              if (unityInstance && unityInstance.Module) {
+                  unityInstance.Module.captureAllKeyboardInput = false;
+              }
+          } else {
+              panel.classList.add("hidden");
+              btn.textContent = "Open Terminal";
+              notifyUnityEditorClosed(); 
+
+              if (unityCanvas) {
+                  unityCanvas.tabIndex = 0;
+                  unityCanvas.style.pointerEvents = "auto";
+                  unityCanvas.focus();
+              }
+
+              if (unityInstance && unityInstance.Module) {
+                  unityInstance.Module.captureAllKeyboardInput = true;
+              }
+          }
+      }
+
+      window.ShowCodeEditor = function (dataString) {
+        let parts = dataString.split("|");
+        let objectId = parts[0];
+        let uiType = parts[1] || "editor";
+        console.log(
+          "Unity บอกให้เปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
+        );
+        currentObjectId = objectId;
+        if (uiType === "terminal") {
+          currentObjectType = "terminal";
+          setTerminalOpen(!terminalOpen);
+        } else {
+          currentObjectType = "editor";
+          setEditorOpen(!editorOpen);
+        }
+      };
+
+      window.ShowEditorButton = function (dataString) {
+        let parts = dataString.split("|");
+        currentObjectId = parts[0];
+        let uiType = parts[1] || "editor";
+
+        const btn = document.getElementById("toggle-editor-btn");
+        if (uiType === "terminal") {
+          currentObjectType = "terminal";
+          btn.innerText = "Open Terminal";
+        } else {
+          currentObjectType = "editor";
+          btn.innerText = "Open Editor";
+        }
+        btn.style.display = "flex";
+      };
+      window.HideEditorButton = function (dataString) {
+        let parts = dataString.split("|");
+        currentObjectId = parts[0];
+
+        const btn = document.getElementById("toggle-editor-btn");
+        btn.style.display = "none";
+
+        if (editorOpen) setEditorOpen(false);
+        if (terminalOpen) setTerminalOpen(false);
+      };
 
       const codeInput = document.getElementById("code");
       const problemInput = document.getElementById("problem");
@@ -876,13 +990,12 @@ let currentObjectId = null; // ⭐ เพิ่ม
 
       async function endGame() {
         try {
-
-          const res = await fetch(`/api/game/endgame/${currentRoomId}`,{
-            method:"POST"
-          })
-          if(!res.ok){
-            const data = await res.json()
-            console.log("Error:",data.error)
+          const res = await fetch(`/api/game/endgame/${currentRoomId}`, {
+            method: "POST",
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            console.log("Error:", data.error);
           }
 
           document.getElementById("timer-display").innerText = "00:00";
