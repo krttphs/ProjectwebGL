@@ -1006,7 +1006,6 @@ class Main {
         if (!currentRoomId) return;
 
         try {
-          //ดึงเวลาจบเกมมาจาก Database
           const res = await fetch(`/api/game/room/${currentRoomId}`);
           if (!res.ok) throw new Error("Fetch time error");
           const roomData = await res.json();
