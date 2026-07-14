@@ -473,16 +473,50 @@
           >
             Loading...
           </div>
-          <div id="time_input_area" class="hidden flex flex-row gap-5">
-            <label for="time_end">Time</label>
-            <input
-              type="number"
-              id="time_end"
-              name="time_end"
-              min="0"
-              style="margin-bottom: 10px; border-width: 2px; text-align: center"
-            />
-            <h2>Second</h2>
+
+          <div
+            id="time_input_area"
+            class="hidden flex flex-col gap-3 w-full mb-6"
+          >
+            <h3 class="text-white font-bold text-left">
+              ตั้งเวลาการแข่งขัน (วินาที)
+            </h3>
+            <div
+              class="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-white/10"
+            >
+              <label class="text-cyan-300">เช้า (Morning)</label>
+              <input
+                type="number"
+                id="time_morning"
+                value="300"
+                min="10"
+                class="w-20 bg-black/50 border border-gray-600 rounded text-center text-white p-1"
+              />
+            </div>
+            <div
+              class="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-white/10"
+            >
+              <label class="text-yellow-300">เที่ยง (Break)</label>
+              <input
+                type="number"
+                id="time_noon"
+                value="60"
+                min="10"
+                class="w-20 bg-black/50 border border-gray-600 rounded text-center text-white p-1"
+              />
+            </div>
+            <div
+              class="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-white/10"
+            >
+              <label class="text-red-300">เย็น (Evening)</label>
+              <input
+                type="number"
+                id="time_evening"
+                value="300"
+                min="10"
+                class="w-20 bg-black/50 border border-gray-600 rounded text-center text-white p-1"
+              />
+            </div>
           </div>
           <button
             id="startGameBtn"
@@ -1018,7 +1052,9 @@
 
           if (isLeader) {
             document.getElementById("startGameBtn").classList.remove("hidden");
-            document.getElementById("time_input_area").classList.remove("hidden");
+            document
+              .getElementById("time_input_area")
+              .classList.remove("hidden");
             document.getElementById("lobbyStatus").innerText =
               "You are the Room Leader";
           } else {
@@ -1052,7 +1088,7 @@
             (payload) => {
               // เมื่อ Leader สั่งเปลี่ยนสถานะห้องเป็น 'playing'
               if (
-                payload.new.status === "playing" &&
+                payload.new.status === "loading" &&
                 payload.eventType === "UPDATE"
               ) {
                 // ย้ายผู้เล่นทุกคนที่อยู่ในห้องนี้ไปหน้า gamemode1
@@ -1092,18 +1128,25 @@
       async function startGameLobby() {
         if (!currentLobbyId || !isLeader) return;
         try {
-          let time_end_value = document.getElementById("time_end").value
-          if(!time_end_value || isNaN(time_end_value) || time_end_value <= 0){
-            time_end_value = 300
-          }
+          let morning =
+            parseInt(document.getElementById("time_morning").value) || 300;
+          let noon = parseInt(document.getElementById("time_noon").value) || 60;
+          let evening =
+            parseInt(document.getElementById("time_evening").value) || 300;
+
           const res = await fetch("/api/lobby/start", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roomId: currentLobbyId,time_end:parseInt(time_end_value) }),
+            body: JSON.stringify({
+              roomId: currentLobbyId,
+              morning_time: morning,
+              noon_time: noon,
+              evening_time: evening,
+            }),
           });
-          if(!res.ok){
+          if (!res.ok) {
             const data = await res.json();
-            alert("ไม่สามารถเริ่มเกมได้: "+data.error)
+            alert("ไม่สามารถเริ่มเกมได้: " + data.error);
           }
         } catch (err) {
           console.error("error message: ", err);
@@ -1130,11 +1173,12 @@
         );
       }
 
-      const time_input = document.getElementById("time_end");
-
-      time_input.addEventListener("keydown", (e) => {
-        if (e.key === "-" || e.key === "e") {
-          e.preventDefault();
+      ["time_morning", "time_noon", "time_evening"].forEach((id) => {
+        const input = document.getElementById(id);
+        if (input) {
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "-" || e.key === "e") e.preventDefault();
+          });
         }
       });
 

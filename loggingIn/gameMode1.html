@@ -7,6 +7,8 @@
     <link rel="shortcut icon" href="/TemplateData/favicon.ico" />
     <link rel="stylesheet" href="/TemplateData/style.css" />
     <link rel="icon" type="image/png" href="/img/webIcon.png" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/supabaseBrowser.js"></script>
     <style>
       :root {
         --bg: #0f1720;
@@ -501,6 +503,26 @@ class Main {
         </div>
       </div>
     </div>
+    <div
+      id="waiting-screen"
+      style="
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        flex-direction: column;
+      "
+    >
+      <h1 class="animate-pulse">Waiting for other players...</h1>
+      <div id="ready-status" class="text-gray-400">Loading...</div>
+    </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var unityInstance = null; // เก็บ instance ไว้ใช้ภายนอก
@@ -521,7 +543,9 @@ class Main {
       canvas.style.height = window.innerHeight + "px";
 
       document.querySelector("#unity-loading-bar").style.display = "block";
-
+      //ดึง roomId จาก URL (ที่ส่งมาจาก lobby)
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentRoomId = urlParams.get("roomId");
       var script = document.createElement("script");
       script.src = loaderUrl;
       script.onload = () => {
@@ -532,12 +556,16 @@ class Main {
           .then((instance) => {
             unityInstance = instance;
             document.querySelector("#unity-loading-bar").style.display = "none";
-            document
-              .getElementById("score-board")
-              .classList.add("waitforUnityLoad");
+            document.getElementById("waiting-screen").style.display = "flex";
             if (instance.Module) {
               instance.Module.captureAllKeyboardInput = false;
             }
+            fetch("/api/game/ready", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ roomId: currentRoomId }),
+            });
+            subscribeGameStatus(currentRoomId);
           })
           .catch((message) => {
             alert(message);
@@ -593,9 +621,6 @@ class Main {
 
         updateLineNumbers();
       })();
-      //ดึง roomId จาก URL (ที่ส่งมาจาก lobby)
-      const urlParams = new URLSearchParams(window.location.search);
-      const currentRoomId = urlParams.get("roomId");
       let myScore = 0;
       async function updateScore(newScore) {
         myScore += newScore;
@@ -849,41 +874,41 @@ class Main {
       }
 
       function setTerminalOpen(open) {
-          terminalOpen = open;
-          const panel = document.getElementById("terminal-panel");
-          const btn = document.getElementById("toggle-editor-btn");
-          const unityCanvas = document.getElementById("unity-canvas");
+        terminalOpen = open;
+        const panel = document.getElementById("terminal-panel");
+        const btn = document.getElementById("toggle-editor-btn");
+        const unityCanvas = document.getElementById("unity-canvas");
 
-          if (open) {
-              panel.classList.remove("hidden");
-              btn.textContent = "Close Terminal";
+        if (open) {
+          panel.classList.remove("hidden");
+          btn.textContent = "Close Terminal";
 
-              if (document.pointerLockElement) document.exitPointerLock();
+          if (document.pointerLockElement) document.exitPointerLock();
 
-              if (unityCanvas) {
-                  unityCanvas.tabIndex = -1;
-                  unityCanvas.style.pointerEvents = "none";
-                  unityCanvas.blur();
-              }
-
-              if (unityInstance && unityInstance.Module) {
-                  unityInstance.Module.captureAllKeyboardInput = false;
-              }
-          } else {
-              panel.classList.add("hidden");
-              btn.textContent = "Open Terminal";
-              notifyUnityEditorClosed(); 
-
-              if (unityCanvas) {
-                  unityCanvas.tabIndex = 0;
-                  unityCanvas.style.pointerEvents = "auto";
-                  unityCanvas.focus();
-              }
-
-              if (unityInstance && unityInstance.Module) {
-                  unityInstance.Module.captureAllKeyboardInput = true;
-              }
+          if (unityCanvas) {
+            unityCanvas.tabIndex = -1;
+            unityCanvas.style.pointerEvents = "none";
+            unityCanvas.blur();
           }
+
+          if (unityInstance && unityInstance.Module) {
+            unityInstance.Module.captureAllKeyboardInput = false;
+          }
+        } else {
+          panel.classList.add("hidden");
+          btn.textContent = "Open Terminal";
+          notifyUnityEditorClosed();
+
+          if (unityCanvas) {
+            unityCanvas.tabIndex = 0;
+            unityCanvas.style.pointerEvents = "auto";
+            unityCanvas.focus();
+          }
+
+          if (unityInstance && unityInstance.Module) {
+            unityInstance.Module.captureAllKeyboardInput = true;
+          }
+        }
       }
 
       window.ShowCodeEditor = function (dataString) {
@@ -953,6 +978,28 @@ class Main {
         });
       });
 
+      function subscribeGameStatus(roomId) {
+        supabase
+          .channel("game-room-" + roomId)
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "game_rooms",
+              filter: `id=eq.${roomId}`,
+            },
+            (payload) => {
+              if (payload.new.status === "playing") {
+                document.getElementById("waiting-screen").style.display =
+                  "none";
+                startTimer();
+              }
+            },
+          )
+          .subscribe();
+      }
+
       let countdownInterval;
 
       async function startTimer() {
@@ -963,11 +1010,13 @@ class Main {
           const res = await fetch(`/api/game/room/${currentRoomId}`);
           if (!res.ok) throw new Error("Fetch time error");
           const roomData = await res.json();
-
+          if (unityInstance) {
+            const timeString = `${roomData.morning_time},${roomData.noon_time},${roomData.evening_time}`;
+            unityInstance.SendMessage("GameManager", "SetupTime", timeString);
+          }
           //แปลงเป็น Timestamp
           const endTime = new Date(roomData.end_time).getTime();
 
-          //เริ่มนับถอยหลัง
           countdownInterval = setInterval(() => {
             const now = new Date().getTime();
             const distance = endTime - now;
@@ -1017,7 +1066,6 @@ class Main {
           console.error("Unable to end the game: ", err);
         }
       }
-      startTimer();
       // Unity bind keyboard listeners ที่ window ด้วย capture:true
       // วิธีเดียวที่ตัดได้คือดักที่ window capture phase ก่อน Unity
       // แล้วเช็คว่า activeElement เป็น textarea -> stopImmediatePropagation ตัด Unity

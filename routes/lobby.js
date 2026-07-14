@@ -83,21 +83,26 @@ router.post("/find-match", requireAuth, async (req, res) => {
 router.post("/start", requireAuth, async (req, res) => {
   const roomId = req.body.roomId;
   const userId = req.user.id;
-  try{
-    const timeEnd = new Date(Date.now() + req.body.time_end * 1000).toISOString();
-  // อัปเดตสถานะห้องเป็น 'playing'
-  const {error} = await supabase
-    .from("game_rooms")
-    .update({ status: "playing" ,end_time: timeEnd})
-    .eq("id", roomId)
-    .eq("leader_id", userId);
-    
-    if(error) throw error;
-    
+  const { morning_time, noon_time, evening_time } = req.body;
+  try {
+
+    const { error } = await supabase
+      .from("game_rooms")
+      .update({
+        status: "loading",
+        morning_time: morning_time,
+        noon_time: noon_time,
+        evening_time: evening_time,
+      })
+      .eq("id", roomId)
+      .eq("leader_id", userId);
+
+    if (error) throw error;
+
     res.json({ success: true });
-  } catch(err){
-    console.error("Start game failed: ",err)
-    res.status(500).json({error:"Failed to start game"})
+  } catch (err) {
+    console.error("Start game failed: ", err);
+    res.status(500).json({ error: "Failed to start game" });
   }
 });
 
@@ -146,6 +151,24 @@ router.get("/:roomId/players", requireAuth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
+});
+
+router.post("/ready", requireAuth, async (req, res) => {
+  const { roomId } = req.body;
+  const userId = req.user.id;
+
+  await supabase.from("player_ready_status").upsert({ room_id: roomId, player_id: userId, is_ready: true });
+
+  const { count: readyCount } = await supabase.from("player_ready_status").select("*", {count: 'exact'}).eq("room_id", roomId).eq("is_ready", true);
+  const { count: totalPlayers } = await supabase.from("room_players").select("*", {count: 'exact'}).eq("room_id", roomId);
+
+  if (readyCount >= totalPlayers) {
+    const {data:room} = (await supabase.from("game_rooms").select("morning_time, noon_time, evening_time")).eq("id",roomId).single()
+    const totalSeconds = room.morning_time + room.noon_time + room.evening_time;
+    const timeEnd = new Date(Date.now() + totalSeconds * 1000).toISOString();
+    await supabase.from("game_rooms").update({ status: "playing", end_time: timeEnd }).eq("id", roomId);
+  }
+  res.json({ success: true });
 });
 
 module.exports = router;
