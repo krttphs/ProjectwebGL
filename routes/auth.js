@@ -49,7 +49,7 @@ router.post("/register",hasAuth, async (req, res) => {
       .json({ error: "สมัครสมาชิกไม่สำเร็จ (No user data returned)" });
   }
 
-  const {data:insertError} = await supabase.from("users").upsert({
+  const {error:insertError} = await supabase.from("users").upsert({
     id: data.user.id,
     email: tempEmail,
     username,

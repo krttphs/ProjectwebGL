@@ -3,7 +3,6 @@ const supabase = require("../config/supabaseClient"); // อย่าลืม r
 const requireAuth = async (req, res, next) => {
   const token = req.cookies.token;
 
-  // ฟังก์ชันแยกสำหรับจัดการกรณีที่ไม่มีสิทธิ์เข้าถึง
   const handleUnauthorized = () => {
     // ถ้า Request เป็น API ให้ส่ง JSON ตอบกลับไป
     if (req.originalUrl.startsWith("/api/")) {
@@ -11,7 +10,6 @@ const requireAuth = async (req, res, next) => {
         .status(401)
         .json({ error: "Unauthorized: Token ไม่ถูกต้องหรือหมดอายุ" });
     }
-    // ถ้าเป็นการเปิดหน้าเว็บเฉยๆ ให้เด้งไปหน้า login
     return res.redirect("/login");
   };
 
