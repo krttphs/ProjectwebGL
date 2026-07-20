@@ -4,6 +4,7 @@ const requireAuth = async (req, res, next) => {
   const token = req.cookies.token;
 
   const handleUnauthorized = () => {
+    res.clearCookie("token");
     // ถ้า Request เป็น API ให้ส่ง JSON ตอบกลับไป
     if (req.originalUrl.startsWith("/api/")) {
       return res

@@ -523,6 +523,12 @@ class Main {
       <h1 class="animate-pulse">Waiting for other players...</h1>
       <div id="ready-status" class="text-gray-400">Loading...</div>
     </div>
+    <div id="stress-message" style="display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background-color: rgba(239, 68, 68, 0.5); color: white; padding: 5px; border-radius: 12px; z-index: 9999; box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px; font-size: 8px;">
+        <h1>คุณมีความเครียดสะสมเยอะเกินไป ไม่สามารถทำงานต่อได้</h1>
+    </div>
+    <div id="own_a_computer_message" style="display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background-color: rgba(239, 68, 68, 0.5); color: white; padding: 5px; border-radius: 12px; z-index: 9999; box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px; font-size: 8px;">
+        <h1>คุณมีคอมพิวเตอร์ประจำตัวอยู่แล้ว ไม่สามารถทำงานที่เครื่องว่างนี้ได้!</h1>
+    </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var unityInstance = null; // เก็บ instance ไว้ใช้ภายนอก
@@ -1035,6 +1041,46 @@ class Main {
           console.error("Timer start failed:", err);
         }
       }
+
+      window.ForceCloseWebUI = function () {
+        console.log("Unity สั่งบังคับปิด Editor!");
+        
+        document.getElementById("toggle-editor-btn").style.display = "none";
+
+        if (editorOpen) setEditorOpen(false);
+        if (terminalOpen) setTerminalOpen(false);
+      };
+
+      let isStressMessageShowing = false;
+      window.AlertMessageStress = function () {
+        if(isStressMessageShowing){
+          return;
+        }
+        console.log("เรียก AlertMessageStress")
+        isStressMessageShowing = true;
+
+        document.getElementById("stress-message").style.display = "flex";
+        
+        setTimeout(() => {
+          document.getElementById("stress-message").style.display = "none";
+          isStressMessageShowing = false;
+        },3000)
+      };
+      let isOwn_a_computer_message_showing = false;
+      window.AlertMessageOwnAComputer = function () {
+        if(isOwn_a_computer_message_showing){
+          return;
+        }
+        console.log("เรียก AlertMessageOwnAComputer")
+        isOwn_a_computer_message_showing = true;
+
+        document.getElementById("own_a_computer_message").style.display = "flex";
+        
+        setTimeout(() => {
+          document.getElementById("own_a_computer_message").style.display = "none";
+          isOwn_a_computer_message_showing = false;
+        },3000)
+      };
 
       async function endGame() {
         try {
