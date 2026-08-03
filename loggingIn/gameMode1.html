@@ -60,7 +60,7 @@
         top: 20px;
         right: 20px;
         bottom: 20px;
-        width: 420px;
+        width: 95vw;
         background: var(--right-bg);
         backdrop-filter: blur(15px);
         -webkit-backdrop-filter: blur(15px);
@@ -412,12 +412,12 @@
         </div>
 
         <div style="display: flex; gap: 8px">
-          <button
+          <!-- <button
             id="randomQuestBtn"
             style="flex: 2; background: var(--accent)"
           >
             Random Quest
-          </button>
+          </button> -->
           <button onclick="updateScore(-50)" style="flex: 1">Give up</button>
         </div>
       </div>
@@ -455,52 +455,26 @@ class Main {
 
       <div id="output">Output logs will appear here...</div>
     </div>
-    <div class="editor-panel hidden" id="terminal-panel" style="width: 500px">
+    <div class="editor-panel hidden" id="getATask-panel">
+      <h1>Start working</h1>
       <div
         style="
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 10px;
-        "
-      >
-        <label>Server Terminal</label>
-        <button
-          onclick="setTerminalOpen(false)"
-          style="
-            background: #ff5555;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 5px 10px;
-            cursor: pointer;
-          "
-        >
-          Close
-        </button>
-      </div>
-      <div
-        class="editor-wrap"
-        style="
           flex: 1;
-          background: #000;
-          padding: 10px;
-          border: 1px solid #50fa7b;
+          max-height: 15px;
+          background-color: #575656;
+          border-radius: 50px;
+        "
+      ></div>
+      <div
+        style="
+          display: flex;
+          flex: 1;
+          justify-content: center;
+          align-items: center;
         "
       >
-        <div
-          id="terminal-output"
-          style="
-            color: #50fa7b;
-            font-family: var(--editor-font);
-            font-size: 14px;
-            white-space: pre-wrap;
-            height: 100%;
-            overflow-y: auto;
-          "
-        >
-          Welcome to Server Terminal LTS root@server:~# _
-        </div>
+        <button id="randomQuestBtn">Start random a task</button>
       </div>
     </div>
     <div
@@ -523,11 +497,45 @@ class Main {
       <h1 class="animate-pulse">Waiting for other players...</h1>
       <div id="ready-status" class="text-gray-400">Loading...</div>
     </div>
-    <div id="stress-message" style="display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background-color: rgba(239, 68, 68, 0.5); color: white; padding: 5px; border-radius: 12px; z-index: 9999; box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px; font-size: 8px;">
-        <h1>คุณมีความเครียดสะสมเยอะเกินไป ไม่สามารถทำงานต่อได้</h1>
+    <div
+      id="stress-message"
+      style="
+        display: none;
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(239, 68, 68, 0.5);
+        color: white;
+        padding: 5px;
+        border-radius: 12px;
+        z-index: 9999;
+        box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px;
+        font-size: 8px;
+      "
+    >
+      <h1>คุณมีความเครียดสะสมเยอะเกินไป ไม่สามารถทำงานต่อได้</h1>
     </div>
-    <div id="own_a_computer_message" style="display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background-color: rgba(239, 68, 68, 0.5); color: white; padding: 5px; border-radius: 12px; z-index: 9999; box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px; font-size: 8px;">
-        <h1>คุณมีคอมพิวเตอร์ประจำตัวอยู่แล้ว ไม่สามารถทำงานที่เครื่องว่างนี้ได้!</h1>
+    <div
+      id="own_a_computer_message"
+      style="
+        display: none;
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(239, 68, 68, 0.5);
+        color: white;
+        padding: 5px;
+        border-radius: 12px;
+        z-index: 9999;
+        box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px;
+        font-size: 8px;
+      "
+    >
+      <h1>
+        คุณมีคอมพิวเตอร์ประจำตัวอยู่แล้ว ไม่สามารถทำงานที่เครื่องว่างนี้ได้!
+      </h1>
     </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
@@ -738,37 +746,42 @@ class Main {
             clearInterval(submitTimeout);
 
             if (result.stdout) {
+              isGetATask = false
               if (
                 normalize(result.stdout) ===
                 normalize(currentQuest.expectedOutput)
               ) {
                 //เทียบกับ expectedOutput
-                output.textContent =
-                  "ถูกต้อง!! ✅" +
-                  "\nเวลาที่ใช้: " +
-                  result.time +
-                  " วินาที" +
-                  "\nmemory ที่ใช้: " +
-                  result.memory +
-                  "KB" +
-                  "\nรางวัล: " +
-                  currentQuest.rewards +
-                  "\nได้คะแนน: 50";
+                output.textContent = "เสร็จสิ้น！";
+                  // "ถูกต้อง!! ✅" +
+                  // "\nเวลาที่ใช้: " +
+                  // result.time +
+                  // " วินาที" +
+                  // "\nmemory ที่ใช้: " +
+                  // result.memory +
+                  // "KB" +
+                  // "\nรางวัล: " +
+                  // currentQuest.rewards +
+                  // "\nได้คะแนน: 50";
+                  if(unityInstance){
+                    unityInstance.SendMessage("GameManager", "SpawnResultBall", "correct");
+                  }
                 updateScore(50);
-                //addReward(currentQuest.rewards)
-                // if (unityInstance) {
-                //   unityInstance.SendMessage("player1", "TriggerAttack");
-                // }
               } else {
                 output.textContent =
-                  "❌ Output ไม่ตรงกับที่ต้องการ\n" + "ลบ 25 แต้ม";
-                // "Expected:\n" +
-                // currentQuest.show_expect_output +
-                // "\n" +
-                // "Got:\n" +
-                // result.stdout;
+                  "เสร็จสิ้น！";
+                  unityInstance.SendMessage("GameManager", "SpawnResultBall", "wrong");
                 updateScore(-25);
               }
+              if (unityInstance && currentObjectId) {
+              console.log("บอก unity ว่าจบ task แล้วที่ :", currentObjectId);
+              unityInstance.SendMessage(currentObjectId, "UpdateHavingTask", "false");
+            } else {
+              console.warn(
+                "❌ ไม่มี objectId หรือ unityInstance",
+                currentObjectId,
+              );
+            }
             } else if (result.stderr) {
               output.textContent = "Error:\n" + result.stderr;
             } else if (result.compile_output) {
@@ -789,7 +802,8 @@ class Main {
         .addEventListener("click", async () => {
           try {
             // ดึงค่าความยากจาก Dropdown มาเก็บใส่ตัวแปรก่อน
-            const difficultyLevel = document.getElementById("difficulty").value;
+            const difficultyLevel =
+              document.getElementById("difficulty").value || "easy";
 
             let res = await fetch(`/api/quests/random/${difficultyLevel}`);
 
@@ -798,13 +812,24 @@ class Main {
             }
 
             let quest = await res.json();
+            isGetATask = true;
+            if (unityInstance && currentObjectId) {
+              console.log("บอก unity ว่าได้ task แล้วที่ :", currentObjectId);
+              unityInstance.SendMessage(currentObjectId, "UpdateHavingTask", "true");
+            } else {
+              console.warn(
+                "❌ ไม่มี objectId หรือ unityInstance",
+                currentObjectId,
+              );
+            }
+
             currentQuest = quest;
 
             currentQuest.inputRun = quest.input_run;
             currentQuest.inputSubmit = quest.input_submit;
             currentQuest.expectedOutput = quest.expected_output;
             currentQuest.rewards = quest.rewards;
-
+            setEditorOpen(true);
             // แสดงผลใน UI
             document.getElementById("problem").value = quest.description;
             output.textContent = "สุ่มได้โจทย์: " + quest.title + "\n";
@@ -830,90 +855,41 @@ class Main {
           console.warn("❌ ไม่มี objectId หรือ unityInstance", currentObjectId);
         }
       }
-
+      let isGetATask = false;
       function setEditorOpen(open) {
         editorOpen = open;
-        const panel = document.getElementById("editor-panel");
+        const editorPanel = document.getElementById("editor-panel");
+        const getATaskPanel = document.getElementById("getATask-panel");
         const btn = document.getElementById("toggle-editor-btn");
         const codeTextarea = document.getElementById("code");
         const unityCanvas = document.getElementById("unity-canvas");
-
         if (open) {
-          panel.classList.remove("hidden");
           btn.textContent = "Close Editor";
 
           if (document.pointerLockElement) {
             document.exitPointerLock();
           }
-
           if (unityCanvas) {
             unityCanvas.tabIndex = -1;
             unityCanvas.style.pointerEvents = "none";
             unityCanvas.blur();
           }
-
           if (unityInstance && unityInstance.Module) {
             unityInstance.Module.captureAllKeyboardInput = false;
           }
-
-          setTimeout(() => {
-            codeTextarea.focus();
-          }, 50);
-        } else {
-          panel.classList.add("hidden");
-          btn.textContent = "Open Editor";
-          notifyUnityEditorClosed();
-
-          if (unityCanvas) {
-            unityCanvas.tabIndex = 0;
-            unityCanvas.style.pointerEvents = "auto";
-          }
-
-          if (unityInstance && unityInstance.Module) {
-            unityInstance.Module.captureAllKeyboardInput = true;
-          }
-
-          if (unityCanvas) {
-            unityCanvas.focus();
-          }
-        }
-      }
-
-      function setTerminalOpen(open) {
-        terminalOpen = open;
-        const panel = document.getElementById("terminal-panel");
-        const btn = document.getElementById("toggle-editor-btn");
-        const unityCanvas = document.getElementById("unity-canvas");
-
-        if (open) {
-          panel.classList.remove("hidden");
-          btn.textContent = "Close Terminal";
-
-          if (document.pointerLockElement) document.exitPointerLock();
-
-          if (unityCanvas) {
-            unityCanvas.tabIndex = -1;
-            unityCanvas.style.pointerEvents = "none";
-            unityCanvas.blur();
-          }
-
-          if (unityInstance && unityInstance.Module) {
-            unityInstance.Module.captureAllKeyboardInput = false;
+          if (isGetATask) {
+            editorPanel.classList.remove("hidden");
+            getATaskPanel.classList.add("hidden");
+            setTimeout(() => {
+              if (codeTextarea) codeTextarea.focus();
+            }, 50);
+          } else {
+            getATaskPanel.classList.remove("hidden");
+            editorPanel.classList.add("hidden");
           }
         } else {
-          panel.classList.add("hidden");
-          btn.textContent = "Open Terminal";
-          notifyUnityEditorClosed();
-
-          if (unityCanvas) {
-            unityCanvas.tabIndex = 0;
-            unityCanvas.style.pointerEvents = "auto";
-            unityCanvas.focus();
-          }
-
-          if (unityInstance && unityInstance.Module) {
-            unityInstance.Module.captureAllKeyboardInput = true;
-          }
+          getATaskPanel.classList.add("hidden");
+          editorPanel.classList.add("hidden");
         }
       }
 
@@ -930,8 +906,22 @@ class Main {
           setTerminalOpen(!terminalOpen);
         } else {
           currentObjectType = "editor";
-          setEditorOpen(!editorOpen);
+          setEditorOpen(true);
         }
+      };
+
+      window.HideCodeEditor = function (dataString) {
+        const editorBtn = document.getElementById("toggle-editor-btn")
+        let parts = dataString.split("|");
+        let objectId = parts[0];
+        let uiType = parts[1] || "editor";
+        console.log(
+          "Unity บอกให้ปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
+        );
+        currentObjectId = objectId;
+        currentObjectType = "editor";
+        editorBtn.innerText = "Open Editor";
+        setEditorOpen(false);
       };
 
       window.ShowEditorButton = function (dataString) {
@@ -1044,7 +1034,7 @@ class Main {
 
       window.ForceCloseWebUI = function () {
         console.log("Unity สั่งบังคับปิด Editor!");
-        
+
         document.getElementById("toggle-editor-btn").style.display = "none";
 
         if (editorOpen) setEditorOpen(false);
@@ -1053,33 +1043,35 @@ class Main {
 
       let isStressMessageShowing = false;
       window.AlertMessageStress = function () {
-        if(isStressMessageShowing){
+        if (isStressMessageShowing) {
           return;
         }
-        console.log("เรียก AlertMessageStress")
+        console.log("เรียก AlertMessageStress");
         isStressMessageShowing = true;
 
         document.getElementById("stress-message").style.display = "flex";
-        
+
         setTimeout(() => {
           document.getElementById("stress-message").style.display = "none";
           isStressMessageShowing = false;
-        },3000)
+        }, 3000);
       };
       let isOwn_a_computer_message_showing = false;
       window.AlertMessageOwnAComputer = function () {
-        if(isOwn_a_computer_message_showing){
+        if (isOwn_a_computer_message_showing) {
           return;
         }
-        console.log("เรียก AlertMessageOwnAComputer")
+        console.log("เรียก AlertMessageOwnAComputer");
         isOwn_a_computer_message_showing = true;
 
-        document.getElementById("own_a_computer_message").style.display = "flex";
-        
+        document.getElementById("own_a_computer_message").style.display =
+          "flex";
+
         setTimeout(() => {
-          document.getElementById("own_a_computer_message").style.display = "none";
+          document.getElementById("own_a_computer_message").style.display =
+            "none";
           isOwn_a_computer_message_showing = false;
-        },3000)
+        }, 3000);
       };
 
       async function endGame() {

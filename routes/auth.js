@@ -104,7 +104,7 @@ router.get("/me", requireAuth,async (req, res) => {
 });
 
 router.post("/logout",requireAuth, (req, res) => {
-  res.clearCookie("token"); // ลบ Cookie ออก
+  res.clearCookie("token");
   res.json({ message: "ออกจากระบบแล้ว" });
 });
 

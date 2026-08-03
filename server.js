@@ -50,9 +50,7 @@ app.get("/login",hasAuth,(req,res)=>{
 })
 
 app.get("/index",requireAuth,(req,res)=>{
-  res.render("index", {
-  userId: req.user.id,
-});
+  res.redirect("/");
 })
 
 app.get("/gamemode1",requireAuth,(req,res)=>{
