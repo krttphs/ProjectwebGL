@@ -388,6 +388,10 @@
       <div class="controls">
         <div class="col-row">
           <div class="col">
+            <label>Task</label>
+            <h3 id="taskTitle" style="margin-top: -3px; height: 28px"></h3>
+          </div>
+          <div class="col">
             <label>Language</label>
             <select id="lang">
               <option value="62">Java</option>
@@ -395,17 +399,10 @@
               <option value="71">Python</option>
             </select>
           </div>
-          <div class="col">
-            <label>Difficulty</label>
-            <select id="difficulty">
-              <option value="easy">Easy</option>
-              <option value="mid">Medium</option>
-            </select>
-          </div>
         </div>
 
         <div class="col">
-          <label>Quest Description</label>
+          <label>Task Description</label>
           <textarea id="problem" class="input-problem" readonly>
       กรุณาสุ่มโจทย์เพื่อเริ่มเล่น...</textarea
           >
@@ -416,9 +413,9 @@
             id="randomQuestBtn"
             style="flex: 2; background: var(--accent)"
           >
-            Random Quest
+            Random Task
           </button> -->
-          <button onclick="updateScore(-50)" style="flex: 1">Give up</button>
+          <button onclick="giveUp()" style="flex: 1">Give up</button>
         </div>
       </div>
 
@@ -438,18 +435,69 @@
       </div>
 
       <div class="editor-wrap">
-        <div class="gutter" id="gutter">
-          <div id="lineNumbers">1</div>
-        </div>
-        <div class="editor">
-          <textarea id="code" spellcheck="false">
-import java.util.Scanner;
-class Main {
-    public static void main(String[] args) {
-      //พิมพ์โค้ดที่นี่...
-    }
+        <div
+          style="
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+          "
+        >
+          <!-- ช่องที่ 1: โค้ดตั้งต้น -->
+          <div style="display: flex; flex-direction: column; flex: 1">
+            <label style="color: #ffbd2e"
+              >1.ตัวแปร / ฟังก์ชันที่เตรียมไว้ให้</label
+            >
+            <textarea
+              id="code-part1"
+              style="flex: 1; resize: none; background: #282a36; color: #f8f8f2"
+              readonly
+            >
+// รอรับข้อมูลจากโจทย์...</textarea
+            >
+          </div>
+
+          <!-- ช่องที่ 2: ไส้ในฟังก์ชัน (ให้ผู้เล่นเติม) -->
+          <div style="display: flex; flex-direction: column; flex: 1">
+            <label style="color: #50fa7b">2. Your Function Logic</label>
+            <textarea
+              id="code-part2"
+              style="
+                flex: 1;
+                resize: none;
+                min-height: 100px;
+                background: #282a36;
+                color: #50fa7b;
+                font-family: var(--editor-font);
+                padding: 10px;
+              "
+            >
+function solve(a, b) {
+    // สร้างฟังก์ชันของคุณ...
 }</textarea
-          >
+            >
+          </div>
+
+          <!-- ช่องที่ 3: เรียกใช้ฟังก์ชัน (ให้ผู้เล่นเติม) -->
+          <div style="display: flex; flex-direction: column; flex: 1">
+            <label style="color: #ff79c6">3. Function Execution</label>
+            <textarea
+              id="code-part3"
+              style="
+                flex: 1;
+                resize: vertical;
+                background: #282a36;
+                color: #ff79c6;
+                font-family: var(--editor-font);
+                padding: 10px;
+              "
+            >
+// เรียกใช้ฟังก์ชันที่นี่...
+console.log(solve(x, y));</textarea
+            >
+          </div>
         </div>
       </div>
 
@@ -606,22 +654,11 @@ class Main {
 
       // ------- จัดการ input ใน editor -------
       (function () {
-        const code = document.getElementById("code");
-        const lineNumbers = document.getElementById("lineNumbers");
-        const gutter = document.getElementById("gutter");
+        const codePart2 = document.getElementById("code-part2");
+        const codePart3 = document.getElementById("code-part3");
 
-        function updateLineNumbers() {
-          const lines = code.value.split("\n").length;
-          let nums = "";
-          for (let i = 1; i <= lines; i++) nums += i + "\n";
-          lineNumbers.textContent = nums;
-        }
-
-        code.addEventListener("scroll", () => {
-          gutter.scrollTop = code.scrollTop;
-        });
-        code.addEventListener("input", updateLineNumbers);
-        code.addEventListener("keydown", function (e) {
+        // ฟังก์ชันสำหรับให้ผู้เล่นกดปุ่ม Tab เพื่อย่อหน้าโค้ดได้
+        function handleTab(e) {
           if (e.key === "Tab") {
             e.preventDefault();
             let s = this.selectionStart;
@@ -629,11 +666,12 @@ class Main {
             this.value =
               this.value.substring(0, s) + "\t" + this.value.substring(ePos);
             this.selectionStart = this.selectionEnd = s + 1;
-            updateLineNumbers();
           }
-        });
+        }
 
-        updateLineNumbers();
+        // อนุญาตให้กด Tab ได้ในช่องที่ 2 และ 3
+        if (codePart2) codePart2.addEventListener("keydown", handleTab);
+        if (codePart3) codePart3.addEventListener("keydown", handleTab);
       })();
       let myScore = 0;
       async function updateScore(newScore) {
@@ -667,7 +705,11 @@ class Main {
         }, 500);
 
         const lang = document.getElementById("lang").value;
-        const code = document.getElementById("code").value;
+        const part1 = document.getElementById("code-part1").value;
+        const part2 = document.getElementById("code-part2").value;
+        const part3 = document.getElementById("code-part3").value;
+
+        const finalCode = `${part1}\n${part2}\n${part3}`;
 
         try {
           let res = await fetch(
@@ -676,13 +718,15 @@ class Main {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                source_code: code,
+                source_code: finalCode,
                 language_id: lang,
                 stdin: currentQuest.inputRun,
               }),
             },
           );
           let result = await res.json();
+          console.log("โค้ดที่ส่งไปรัน:\n", finalCode);
+          console.log("Judge0 ตอบกลับมาว่า:", result);
           clearInterval(timeout);
           if (result.stdout) {
             output.textContent =
@@ -726,7 +770,11 @@ class Main {
           }, 500);
 
           const lang = document.getElementById("lang").value;
-          const code = document.getElementById("code").value;
+          const part1 = document.getElementById("code-part1").value;
+          const part2 = document.getElementById("code-part2").value;
+          const part3 = document.getElementById("code-part3").value;
+
+          const finalCode = `${part1}\n${part2}\n${part3}`;
 
           try {
             let res = await fetch(
@@ -735,7 +783,7 @@ class Main {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  source_code: code,
+                  source_code: finalCode,
                   language_id: lang,
                   stdin: currentQuest.inputSubmit, //ใช้ inputSubmit จากโจทย์
                 }),
@@ -746,42 +794,53 @@ class Main {
             clearInterval(submitTimeout);
 
             if (result.stdout) {
-              isGetATask = false
+              isGetATask = false;
               if (
                 normalize(result.stdout) ===
                 normalize(currentQuest.expectedOutput)
               ) {
                 //เทียบกับ expectedOutput
                 output.textContent = "เสร็จสิ้น！";
-                  // "ถูกต้อง!! ✅" +
-                  // "\nเวลาที่ใช้: " +
-                  // result.time +
-                  // " วินาที" +
-                  // "\nmemory ที่ใช้: " +
-                  // result.memory +
-                  // "KB" +
-                  // "\nรางวัล: " +
-                  // currentQuest.rewards +
-                  // "\nได้คะแนน: 50";
-                  if(unityInstance){
-                    unityInstance.SendMessage("GameManager", "SpawnResultBall", "correct");
-                  }
+                // "ถูกต้อง!! ✅" +
+                // "\nเวลาที่ใช้: " +
+                // result.time +
+                // " วินาที" +
+                // "\nmemory ที่ใช้: " +
+                // result.memory +
+                // "KB" +
+                // "\nรางวัล: " +
+                // currentQuest.rewards +
+                // "\nได้คะแนน: 50";
+                if (unityInstance) {
+                  unityInstance.SendMessage(
+                    "GameManager",
+                    "SpawnResultBall",
+                    "correct",
+                  );
+                }
                 updateScore(50);
               } else {
-                output.textContent =
-                  "เสร็จสิ้น！";
-                  unityInstance.SendMessage("GameManager", "SpawnResultBall", "wrong");
+                output.textContent = "เสร็จสิ้น！";
+                unityInstance.SendMessage(
+                  "GameManager",
+                  "SpawnResultBall",
+                  "wrong",
+                );
                 updateScore(-25);
               }
               if (unityInstance && currentObjectId) {
-              console.log("บอก unity ว่าจบ task แล้วที่ :", currentObjectId);
-              unityInstance.SendMessage(currentObjectId, "UpdateHavingTask", "false");
-            } else {
-              console.warn(
-                "❌ ไม่มี objectId หรือ unityInstance",
-                currentObjectId,
-              );
-            }
+                console.log("บอก unity ว่าจบ task แล้วที่ :", currentObjectId);
+                unityInstance.SendMessage(
+                  currentObjectId,
+                  "UpdateHavingTask",
+                  "false",
+                );
+              } else {
+                console.warn(
+                  "❌ ไม่มี objectId หรือ unityInstance",
+                  currentObjectId,
+                );
+              }
             } else if (result.stderr) {
               output.textContent = "Error:\n" + result.stderr;
             } else if (result.compile_output) {
@@ -802,8 +861,7 @@ class Main {
         .addEventListener("click", async () => {
           try {
             // ดึงค่าความยากจาก Dropdown มาเก็บใส่ตัวแปรก่อน
-            const difficultyLevel =
-              document.getElementById("difficulty").value || "easy";
+            const difficultyLevel = "easy";
 
             let res = await fetch(`/api/quests/random/${difficultyLevel}`);
 
@@ -815,7 +873,11 @@ class Main {
             isGetATask = true;
             if (unityInstance && currentObjectId) {
               console.log("บอก unity ว่าได้ task แล้วที่ :", currentObjectId);
-              unityInstance.SendMessage(currentObjectId, "UpdateHavingTask", "true");
+              unityInstance.SendMessage(
+                currentObjectId,
+                "UpdateHavingTask",
+                "true",
+              );
             } else {
               console.warn(
                 "❌ ไม่มี objectId หรือ unityInstance",
@@ -825,22 +887,49 @@ class Main {
 
             currentQuest = quest;
 
+            currentQuest.title = quest.title;
             currentQuest.inputRun = quest.input_run;
             currentQuest.inputSubmit = quest.input_submit;
             currentQuest.expectedOutput = quest.expected_output;
             currentQuest.rewards = quest.rewards;
             setEditorOpen(true);
             // แสดงผลใน UI
+            document.getElementById("taskTitle").textContent = quest.title;
             document.getElementById("problem").value = quest.description;
             output.textContent = "สุ่มได้โจทย์: " + quest.title + "\n";
             output.textContent += "Input ที่ใช้: " + quest.input_run + "\n";
             output.textContent +=
               "ผลลัพธ์ที่ต้องการ:\n" + quest.show_expect_output;
+            currentQuest.setupCode = quest.setup_code || "";
+            document.getElementById("code-part1").value =
+              currentQuest.setup_code_java;
+            document.getElementById("code-part2").value =
+              "// สร้างฟังก์ชันของคุณ...";
+            document.getElementById("code-part3").value =
+              "// เรียกใช้ฟังก์ชันที่นี่...";
           } catch (err) {
             console.error(err);
             output.textContent = "สุ่มโจทย์ไม่สำเร็จ: " + err.message;
           }
         });
+
+      document.getElementById("lang").addEventListener("change", (e) => {
+        if (!currentQuest) return;
+
+        const langId = e.target.value;
+        const codePart1 = document.getElementById("code-part1");
+
+        if (langId === "62") {
+          // Java
+          codePart1.value = currentQuest.setup_code_java || "";
+        } else if (langId === "63") {
+          // JavaScript
+          codePart1.value = currentQuest.setup_code_js || "";
+        } else if (langId === "71") {
+          // Python
+          codePart1.value = currentQuest.setup_code_python || "";
+        }
+      });
       function back() {
         window.location.href = "/";
       }
@@ -861,7 +950,7 @@ class Main {
         const editorPanel = document.getElementById("editor-panel");
         const getATaskPanel = document.getElementById("getATask-panel");
         const btn = document.getElementById("toggle-editor-btn");
-        const codeTextarea = document.getElementById("code");
+        const codeTextarea = document.getElementById("code-part2");
         const unityCanvas = document.getElementById("unity-canvas");
         if (open) {
           btn.textContent = "Close Editor";
@@ -911,7 +1000,7 @@ class Main {
       };
 
       window.HideCodeEditor = function (dataString) {
-        const editorBtn = document.getElementById("toggle-editor-btn")
+        const editorBtn = document.getElementById("toggle-editor-btn");
         let parts = dataString.split("|");
         let objectId = parts[0];
         let uiType = parts[1] || "editor";
@@ -950,16 +1039,18 @@ class Main {
         if (terminalOpen) setTerminalOpen(false);
       };
 
-      const codeInput = document.getElementById("code");
+      const codeInput1 = document.getElementById("code-part1");
+      const codeInput2 = document.getElementById("code-part2");
+      const codeInput3 = document.getElementById("code-part3");
       const problemInput = document.getElementById("problem");
       const langSelect = document.getElementById("lang");
-      const difficultySelect = document.getElementById("difficulty");
 
       const editableElements = [
-        codeInput,
+        codeInput1,
+        codeInput2,
+        codeInput3,
         problemInput,
         langSelect,
-        difficultySelect,
       ];
 
       editableElements.forEach((el) => {
@@ -997,6 +1088,27 @@ class Main {
       }
 
       let countdownInterval;
+
+      function giveUp() {
+        updateScore(-25);
+        isGetATask = false;
+        if (unityInstance) {
+          unityInstance.SendMessage("GameManager", "SpawnResultBall", "wrong");
+          if (currentObjectId) {
+            console.log("บอก unity ว่าจบ task แล้วที่ :", currentObjectId);
+            unityInstance.SendMessage(
+              currentObjectId,
+              "UpdateHavingTask",
+              "false",
+            );
+          } else {
+            console.warn(
+              "❌ ไม่มี objectId หรือ unityInstance",
+              currentObjectId,
+            );
+          }
+        }
+      }
 
       async function startTimer() {
         if (!currentRoomId) return;
@@ -1111,7 +1223,11 @@ class Main {
         window.addEventListener(
           evtType,
           (e) => {
-            if (document.activeElement === codeInput) {
+            if (
+              document.activeElement === codeInput1 ||
+              document.activeElement === codeInput2 ||
+              document.activeElement === codeInput3
+            ) {
               e.stopImmediatePropagation();
               // ไม่ preventDefault — ให้ browser จัดการ input ตามปกติ
             }
