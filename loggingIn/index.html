@@ -19,7 +19,7 @@
     <style>
       body {
         font-family: "BBH Bogle", sans-serif;
-        overflow: hidden;
+        overflow-x: hidden;
         background-color: #ffffff;
       }
 
@@ -186,9 +186,14 @@
         class="flex-grow flex items-center justify-center gap-8 w-full hidden"
       >
         <div
-          onclick="findMatch()"
-          class="game-card cursor-pointer group w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden"
+          class="game-card group w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden"
         >
+          <div
+            class="absolute flex w-[50%] h-[7%] bg-blue-500 z-99 right-0 rounded-full justify-center items-center mr-3 top-2 md:w-[23%] z-99 cursor-pointer"
+            onclick="howToPlayGM1()"
+          >
+            <h3>How to play</h3>
+          </div>
           <div
             class="h-[60%] w-full bg-blue-900/50 rounded-2xl mb-4 relative overflow-hidden border border-white/10 group-hover:border-cyan-400/50 transition-colors"
           >
@@ -214,10 +219,11 @@
             >
               Work office
             </h3>
-            <p class="text-gray-400 text-sm mb-6">1 vs 1</p>
+            <p class="text-gray-400 text-sm mb-6">Team up OR Solo work!</p>
 
             <button
               class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
+              onclick="findMatch()"
             >
               <span>Find Match</span>
               <i class="fa-solid fa-play"></i>
@@ -239,7 +245,7 @@
             class="h-[60%] w-full bg-purple-900/50 rounded-2xl mb-4 relative overflow-hidden"
           >
             <img
-              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3ubojS9d-R1ccYh9tbJTDyjU3u7qnSy-Qtw&s"
+              src="img/Black_question_mark.png"
               alt="Space"
               class="w-full h-full object-cover"
             />
@@ -260,6 +266,79 @@
           </div>
         </div>
       </main>
+      <div
+        id="background-darker"
+        class="hidden fixed inset-0 z-10 bg-black/80 flex justify-center items-center opacity-0 transition-opacity duration-300"
+      >
+        <div
+          id="howto-gm1"
+          class="flex justify-center items-center text-black flex-col scale-75 lg:scale-100 fixed inset-0 m-auto w-[80%] h-fit bg-gray-500 p-5 hidden z-10"
+        >
+          <div
+            id="howto-header"
+            class="flex w-full justify-center items-center flex-col mb-3 bg-black text-white py-2"
+          >
+            <h1>คุณถูกจ้างเข้ามาทำงานในบริษัท Overcoded</h1>
+            <h1>คู่มือฉบับนี้บอกว่า</h1>
+          </div>
+
+          <div
+            id="howto-body"
+            class="flex justify-center items-start flex-col gap-2"
+          >
+            <h1>
+              1.เมื่อเริ่มเกม ให้ไปหาคอมพิวเตอร์ที่ยังว่าง กด
+              <span class="py-1 px-2 bg-gray-500 rounded-xl border">E</span>
+              เพื่อเป็นเจ้าของมัน
+            </h1>
+            <h1>2.สุ่มโจทย์งาน โดยการกดปุ่ม <span class="py-1 px-2 bg-gray-500 rounded-xl border">Start random a task</span></h1>
+            <h1>
+              3.งานที่ได้มา จะให้เราเขียนฟังก์ชันที่ขาด
+              ลงในกล่องที่แบ่งไว้ให้ตามวัตถุประสงค์ที่โจทย์ต้องการ
+              และนำมาเรียกใช้ที่กล่องสุดท้าย โดยผู้เล่นสามารถเลือกภาษาโปรแกรมมิ่งที่จะใช้เขียนได้ด้านบนขวามือที่หัวข้อ Language
+            </h1>
+            <h1>
+              4.ทุกๆโจทย์จะมีการกำหนดตัวแปรมาให้เรียกใช้งาน เพื่อใช้
+              <i class="px-1">Test</i> ฟังก์ชันที่เราเขียน
+              และแสดงผลลัพธ์ออกมาด้วยเมื่อกดปุ่ม
+              <span class="py-1 px-2 bg-gray-500 rounded-xl border">Run</span>
+            </h1>
+            <h1>
+              5.ตรวจสอบผลลัพธ์ที่แสดงด้านล่าง ถ้าถูกต้องตามโจทย์ก็กดปุ่ม
+              <span class="py-1 px-2 bg-gray-500 rounded-xl border"
+                >Submit</span
+              >
+              เพื่อส่งงานได้เลย!
+            </h1>
+            <h1>
+              6.หลังจากส่งงานแล้ว คุณจะได้กล่องปริศนาออกมา
+              ให้คุณนำเอากล่องนี้ไปส่งให้หัวหน้า
+              ถ้าคุณมั่นใจว่าโค้ดของคุณถูกต้องก็ไม่ต้องกังวล
+              แต่ถ้าโค้ดของคุณผิดล่ะก็...
+            </h1>
+            <h1>
+              7.ปุ่ม <span class="py-1 px-2 bg-gray-500 rounded-xl border">Give up</span> สำหรับในกรณีที่ยอมแพ้กับข้อนี้แล้ว แต่ก็รู้ไว้ด้วยว่าภายในกล่องปริศนาที่ได้รับมา ข้อมูลไม่ถูกต้องแน่นอน..
+            </h1>
+            <h1>
+              **บริหารความเครียดและความหิวของคุณให้ดี
+              เติมกาแฟเมื่อรู้สึกความเครียดสูงเกินไป
+              ถ้าเครียดเกินคุณทำงานต่อไม่ไหวหรอก
+            </h1>
+            <div
+              id="howto-footer"
+              class="w-full flex justify-center items-center mt-3"
+            >
+              <h1>ขอให้โชคดีกับการทำงาน</h1>
+            </div>
+            <button
+              class="w-full flex justify-center items-center mt-2 border cursor-pointer"
+              onclick="howToPlayGM1()"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
       <div class="justify-between relative">
         <div
           onclick="openGameMenu()"
@@ -314,7 +393,7 @@
 
           <div
             onclick="openGlobeSettings()"
-            class="cursor-pointer w-16 h-16 rounded-full bg-black/40 backdrop-blur-sm transition-all duration-500 relative flex items-center justify-center border-2 /* Logic เส้นขอบหมุนๆ เดิมของคุณ ปรับมาใช้ group-data */ border-transparent group-data-[state=closed]:hover:border-dashed group-data-[state=closed]:hover:border-gray-400 group-data-[state=open]:border-dashed group-data-[state=open]:border-white group-data-[state=open]:rotate-180"
+            class="w-16 md:h-16 scale-50 lg:scale-100 rounded-full bg-black/40 backdrop-blur-sm transition-all duration-500 relative flex items-center justify-center border-2 border-transparent group-data-[state=closed]:hover:border-dashed group-data-[state=closed]:hover:border-gray-400 group-data-[state=open]:border-dashed group-data-[state=open]:border-white group-data-[state=open]:rotate-180"
           >
             <img
               src="img/webIcon.png"
@@ -1022,6 +1101,49 @@
 
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
+      }
+      let isTheHowToShown = false;
+      let waitToOpenOrCloseTheHowToAgain = false;
+      function howToPlayGM1() {
+        const HowToWindow = document.getElementById("howto-gm1");
+        if (waitToOpenOrCloseTheHowToAgain) return;
+        if (!isTheHowToShown) {
+          isTheHowToShown = true;
+          waitToOpenOrCloseTheHowToAgain = true;
+          HowToWindow.classList.remove("hidden");
+          HowToWindow.classList.add("flex");
+          HowToWindow.classList.remove("close-game-menu");
+          HowToWindow.classList.add("open-game-menu");
+          document
+            .getElementById("background-darker")
+            .classList.remove("opacity-0");
+          setTimeout(() => {
+            document
+              .getElementById("background-darker")
+              .classList.remove("hidden");
+            waitToOpenOrCloseTheHowToAgain = false;
+          }, 300);
+        } else {
+          isTheHowToShown = false;
+          waitToOpenOrCloseTheHowToAgain = true;
+          HowToWindow.classList.remove("flex");
+          HowToWindow.classList.remove("open-game-menu");
+          HowToWindow.classList.add("close-game-menu");
+          document
+            .getElementById("background-darker")
+            .classList.add("opacity-0");
+          setTimeout(
+            () =>
+              document
+                .getElementById("background-darker")
+                .classList.add("hidden"),
+            300,
+          );
+          setTimeout(() => {
+            HowToWindow.classList.add("hidden");
+            waitToOpenOrCloseTheHowToAgain = false;
+          }, 500);
+        }
       }
 
       //หาห้อง
