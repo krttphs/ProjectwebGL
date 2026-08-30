@@ -5,7 +5,7 @@ const cookieParser = require("cookie-parser");
 
 env.config();
 
-const questRoutes = require("./routes/quests");
+// const questRoutes = require("./routes/quests");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
 const friendsRoutes = require("./routes/friends");
@@ -27,7 +27,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 
 // Routes
-app.use("/api", questRoutes);
+// app.use("/api", questRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friends",friendsRoutes);

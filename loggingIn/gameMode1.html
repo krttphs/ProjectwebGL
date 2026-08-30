@@ -392,6 +392,12 @@
             <h3 id="taskTitle" style="margin-top: -3px; height: 28px"></h3>
           </div>
           <div class="col">
+            <label>Difficulty</label>
+            <h3 id="difficulty" style="margin-top: -3px; height: 28px">
+              Difficulty here...
+            </h3>
+          </div>
+          <div class="col">
             <label>Language</label>
             <select id="lang">
               <option value="62">Java</option>
@@ -585,6 +591,25 @@ console.log(solve(x, y));</textarea
         คุณมีคอมพิวเตอร์ประจำตัวอยู่แล้ว ไม่สามารถทำงานที่เครื่องว่างนี้ได้!
       </h1>
     </div>
+    <div
+      id="not-right-now-message"
+      style="
+        display: none;
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(239, 68, 68, 0.5);
+        color: white;
+        padding: 5px;
+        border-radius: 12px;
+        z-index: 9999;
+        box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px;
+        font-size: 8px;
+      "
+    >
+      <h1>เพื่อนยังไม่เริ่มทำงาน ใจเย็นๆ</h1>
+    </div>
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var unityInstance = null; // เก็บ instance ไว้ใช้ภายนอก
@@ -628,6 +653,21 @@ console.log(solve(x, y));</textarea
               body: JSON.stringify({ roomId: currentRoomId }),
             });
             subscribeGameStatus(currentRoomId);
+            fetch(`/api/game/mycomputer/${currentRoomId}`)
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.computer_id) {
+                  myComputerId = data.computer_id;
+                  unityInstance.SendMessage(
+                    "GameManager",
+                    "RestoreMyComputer",
+                    myComputerId,
+                  );
+                }
+              })
+              .catch((err) =>
+                console.error("Error fetching my computer:", err),
+              );
           })
           .catch((message) => {
             alert(message);
@@ -636,6 +676,7 @@ console.log(solve(x, y));</textarea
       document.body.appendChild(script);
       // --- UI Functions ---
       let currentObjectId = null;
+      let myComputerId = null;
       let currentObjectType = "editor";
       let editorOpen = false;
       let terminalOpen = false;
@@ -692,6 +733,7 @@ console.log(solve(x, y));</textarea
       const runBtn = document.getElementById("runBtn");
       const output = document.getElementById("output");
       let timeout = null;
+      let currentQuest = null;
       runBtn.addEventListener("click", async () => {
         if (!currentQuest) {
           output.textContent = "⚠️ กรุณาสุ่มโจทย์ก่อน";
@@ -720,7 +762,7 @@ console.log(solve(x, y));</textarea
               body: JSON.stringify({
                 source_code: finalCode,
                 language_id: lang,
-                stdin: currentQuest.inputRun,
+                stdin: currentQuest.input_run,
               }),
             },
           );
@@ -785,7 +827,7 @@ console.log(solve(x, y));</textarea
                 body: JSON.stringify({
                   source_code: finalCode,
                   language_id: lang,
-                  stdin: currentQuest.inputSubmit, //ใช้ inputSubmit จากโจทย์
+                  stdin: currentQuest.input_submit, //ใช้ inputSubmit จากโจทย์
                 }),
               },
             );
@@ -795,9 +837,16 @@ console.log(solve(x, y));</textarea
 
             if (result.stdout) {
               isGetATask = false;
+              await fetch("/api/game/currentQuest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  roomId: currentRoomId,
+                }),
+              });
               if (
                 normalize(result.stdout) ===
-                normalize(currentQuest.expectedOutput)
+                normalize(currentQuest.expected_output)
               ) {
                 //เทียบกับ expectedOutput
                 output.textContent = "เสร็จสิ้น！";
@@ -854,17 +903,17 @@ console.log(solve(x, y));</textarea
           }
         });
 
-      let currentQuest = null; // เก็บโจทย์ที่สุ่มมา
-
       document
         .getElementById("randomQuestBtn")
         .addEventListener("click", async () => {
           try {
-            // ดึงค่าความยากจาก Dropdown มาเก็บใส่ตัวแปรก่อน
-            const difficultyLevel = "easy";
-
-            let res = await fetch(`/api/quests/random/${difficultyLevel}`);
-
+            let res = await fetch(`/api/game/quests/random`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                roomId: currentRoomId,
+              }),
+            });
             if (!res.ok) {
               throw new Error(`Server error: ${res.status}`);
             }
@@ -886,21 +935,16 @@ console.log(solve(x, y));</textarea
             }
 
             currentQuest = quest;
-
-            currentQuest.title = quest.title;
-            currentQuest.inputRun = quest.input_run;
-            currentQuest.inputSubmit = quest.input_submit;
-            currentQuest.expectedOutput = quest.expected_output;
-            currentQuest.rewards = quest.rewards;
             setEditorOpen(true);
             // แสดงผลใน UI
             document.getElementById("taskTitle").textContent = quest.title;
             document.getElementById("problem").value = quest.description;
+            document.getElementById("difficulty").textContent = quest.level;
+            console.log("ระดับความยาก:" + quest.level);
             output.textContent = "สุ่มได้โจทย์: " + quest.title + "\n";
             output.textContent += "Input ที่ใช้: " + quest.input_run + "\n";
             output.textContent +=
               "ผลลัพธ์ที่ต้องการ:\n" + quest.show_expect_output;
-            currentQuest.setupCode = quest.setup_code || "";
             document.getElementById("code-part1").value =
               currentQuest.setup_code_java;
             document.getElementById("code-part2").value =
@@ -945,6 +989,7 @@ console.log(solve(x, y));</textarea
         }
       }
       let isGetATask = false;
+      let friendTask = false;
       function setEditorOpen(open) {
         editorOpen = open;
         const editorPanel = document.getElementById("editor-panel");
@@ -966,7 +1011,13 @@ console.log(solve(x, y));</textarea
           if (unityInstance && unityInstance.Module) {
             unityInstance.Module.captureAllKeyboardInput = false;
           }
-          if (isGetATask) {
+          if (currentObjectId === myComputerId && isGetATask) {
+            editorPanel.classList.remove("hidden");
+            getATaskPanel.classList.add("hidden");
+            setTimeout(() => {
+              if (codeTextarea) codeTextarea.focus();
+            }, 50);
+          } else if (currentObjectId !== myComputerId && friendTask) {
             editorPanel.classList.remove("hidden");
             getATaskPanel.classList.add("hidden");
             setTimeout(() => {
@@ -982,20 +1033,107 @@ console.log(solve(x, y));</textarea
         }
       }
 
-      window.ShowCodeEditor = function (dataString) {
-        let parts = dataString.split("|");
-        let objectId = parts[0];
-        let uiType = parts[1] || "editor";
-        console.log(
-          "Unity บอกให้เปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
-        );
-        currentObjectId = objectId;
-        if (uiType === "terminal") {
-          currentObjectType = "terminal";
-          setTerminalOpen(!terminalOpen);
-        } else {
-          currentObjectType = "editor";
-          setEditorOpen(true);
+      window.ShowCodeEditor = async function (dataString) {
+        try {
+          let parts = dataString.split("|");
+          let objectId = parts[0];
+          let uiType = parts[1] || "editor";
+          let isMine = parts[2] === "true";
+          currentObjectId = objectId;
+          console.log(
+            "Unity บอกให้เปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
+          );
+          if (myComputerId == null && isMine) {
+            const res = await fetch("/api/game/mycomputer", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                myComputer_id: objectId,
+                roomId: currentRoomId,
+              }),
+            });
+            const data = await res.json();
+            myComputerId = data.computer_id;
+          }
+          if (!isMine) {
+            const res = await fetch(
+              `/api/game/computerCode/${currentRoomId}/${currentObjectId}`,
+            );
+            const data = await res.json();
+            if (data && data.code.current_quest_id === null) {
+              notifyUnityEditorClosed();
+              return friendNotDoingTaskRNAlert();
+            }
+            currentQuest = data.quest;
+            friendTask = true;
+            document.getElementById("taskTitle").textContent = data.quest.title;
+            document.getElementById("problem").value = data.quest.description;
+            document.getElementById("difficulty").textContent =
+              data.quest.level;
+            output.textContent = "สุ่มได้โจทย์: " + data.quest.title + "\n";
+            output.textContent +=
+              "Input ที่ใช้: " + data.quest.input_run + "\n";
+            output.textContent +=
+              "ผลลัพธ์ที่ต้องการ:\n" + data.quest.show_expect_output;
+            document.getElementById("code-part1").value =
+              data.quest.setup_code_java; //ต้องแก้
+            document.getElementById("code-part2").value =
+              data.code.code_part_2 || "// สร้างฟังก์ชันของคุณ...";
+            document.getElementById("code-part3").value =
+              data.code.code_part_3 || "// เรียกใช้ฟังก์ชันที่นี่...";
+            if (unityInstance) {
+              unityInstance.SendMessage(
+                currentObjectId,
+                "UpdateHavingTask",
+                "true",
+              );
+            }
+          } else if (isMine && myComputerId !== null) {
+            friendTask = false;
+            const res = await fetch(
+              `/api/game/computerCode/${currentRoomId}/${myComputerId}`,
+            );
+            const data = await res.json();
+            if (data && data.code.current_quest_id === null) {
+            } else {
+              isGetATask = true;
+              currentQuest = data.quest;
+              document.getElementById("taskTitle").textContent =
+                currentQuest.title;
+              document.getElementById("problem").value =
+                currentQuest.description;
+              document.getElementById("difficulty").textContent =
+                currentQuest.level;
+              output.textContent = "สุ่มได้โจทย์: " + currentQuest.title + "\n";
+              output.textContent +=
+                "Input ที่ใช้: " + currentQuest.input_run + "\n";
+              output.textContent +=
+                "ผลลัพธ์ที่ต้องการ:\n" + currentQuest.expected_output;
+              document.getElementById("code-part1").value =
+                currentQuest.setup_code_java; //ต้องแก้
+              document.getElementById("code-part2").value =
+                data.code.code_part_2 || "// สร้างฟังก์ชันของคุณ...";
+              document.getElementById("code-part3").value =
+                data.code.code_part_3 || "// เรียกใช้ฟังก์ชันที่นี่...";
+                if (unityInstance) {
+              unityInstance.SendMessage(
+                currentObjectId,
+                "UpdateHavingTask",
+                "true",
+              );
+            }
+            }
+          }
+          setupCodeSync(currentRoomId, currentObjectId, isMine);
+          if (uiType === "terminal") {
+            currentObjectType = "terminal";
+            setTerminalOpen(!terminalOpen);
+          } else {
+            currentObjectType = "editor";
+            setEditorOpen(true);
+          }
+        } catch (error) {
+          console.error("ShowCodeEditor: ", error);
         }
       };
 
@@ -1011,6 +1149,10 @@ console.log(solve(x, y));</textarea
         currentObjectType = "editor";
         editorBtn.innerText = "Open Editor";
         setEditorOpen(false);
+        if (codingSyncChannel) {
+          supabase.removeChannel(codingSyncChannel);
+          codingSyncChannel = null;
+        }
       };
 
       window.ShowEditorButton = function (dataString) {
@@ -1089,9 +1231,16 @@ console.log(solve(x, y));</textarea
 
       let countdownInterval;
 
-      function giveUp() {
+      async function giveUp() {
         updateScore(-25);
         isGetATask = false;
+        await fetch("/api/game/currentQuest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId: currentRoomId,
+          }),
+        });
         if (unityInstance) {
           unityInstance.SendMessage("GameManager", "SpawnResultBall", "wrong");
           if (currentObjectId) {
@@ -1107,6 +1256,29 @@ console.log(solve(x, y));</textarea
               currentObjectId,
             );
           }
+        }
+      }
+
+      async function saveCode() {
+        try {
+          const code_part_2 = document.getElementById("code-part2").value;
+          const code_part_3 = document.getElementById("code-part3").value;
+
+          if (!currentRoomId || !currentObjectId) return;
+
+          await fetch("/api/game/code-part2-part3", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              roomId: currentRoomId,
+              computerId: currentObjectId,
+              codePart2: code_part_2,
+              codePart3: code_part_3,
+            }),
+          });
+          console.log("auto-saved code!");
+        } catch (error) {
+          console.error("failed to auto-save code");
         }
       }
 
@@ -1185,6 +1357,82 @@ console.log(solve(x, y));</textarea
           isOwn_a_computer_message_showing = false;
         }, 3000);
       };
+      let is_not_right_now_message_showing = false;
+      function friendNotDoingTaskRNAlert() {
+        if (is_not_right_now_message_showing) {
+          return;
+        }
+        is_not_right_now_message_showing = true;
+
+        document.getElementById("not-right-now-message").style.display = "flex";
+
+        setTimeout(() => {
+          document.getElementById("not-right-now-message").style.display =
+            "none";
+          is_not_right_now_message_showing = false;
+        }, 3000);
+      }
+      let codingSyncChannel = null;
+      let autoSaveTimer = null;
+      function setupCodeSync(roomId, computerId, isMine) {
+        if (codingSyncChannel) {
+          supabase.removeChannel(codingSyncChannel);
+        }
+
+        // สร้าง Channel โดยใช้ชื่อคอมพิวเตอร์
+        codingSyncChannel = supabase.channel(`sync-${roomId}-${computerId}`);
+
+        const part1 = document.getElementById("code-part1");
+        const part2 = document.getElementById("code-part2");
+        const part3 = document.getElementById("code-part3");
+        const runBtn = document.getElementById("runBtn");
+        const submitBtn = document.getElementById("submitBtn");
+
+        //ปลดล็อกให้ทั้งสองคนแก้ไขโค้ดและเห็นปุ่ม Run/Submit ได้
+        part2.readOnly = false;
+        part3.readOnly = false;
+        runBtn.style.display = "block";
+        if (isMine) {
+            submitBtn.style.display = "block";
+        } else {
+            submitBtn.style.display = "none";
+        }
+        //ดักรับข้อมูล Broadcast จากเพื่อนร่วมทีม
+        codingSyncChannel
+          .on("broadcast", { event: "typing" }, (payload) => {
+            const { id, text } = payload.payload;
+            const el = document.getElementById(id);
+
+            if (el) {
+              // เก็บตำแหน่ง Cursor ของเราไว้ก่อน เพื่อไม่ให้มันกระโดดเวลาค่าถูกอัปเดตจากเพื่อน
+              const start = el.selectionStart;
+              const end = el.selectionEnd;
+
+              el.value = text;
+
+              // คืนค่าตำแหน่ง Cursor ให้เราพิมพ์ต่อได้สมูทๆ
+              el.setSelectionRange(start, end);
+            }
+          })
+          .subscribe();
+
+        //ส่งข้อมูล Broadcast ออกไปหาเพื่อนเวลาที่เราพิมพ์
+        const broadcastCode = (e) => {
+          codingSyncChannel.send({
+            type: "broadcast",
+            event: "typing",
+            payload: { id: e.target.id, text: e.target.value },
+          });
+          clearTimeout(autoSaveTimer);
+          autoSaveTimer = setTimeout(() => {
+            saveCode();
+          }, 3000);
+        };
+
+        // ผูก Event ให้ส่งข้อมูลเมื่อมีการเปลี่ยนแปลงในกล่องที่ 2 และ 3 (กล่อง 1 ปกติล็อคไว้ให้ดูโจทย์)
+        part2.oninput = broadcastCode;
+        part3.oninput = broadcastCode;
+      }
 
       async function endGame() {
         try {
