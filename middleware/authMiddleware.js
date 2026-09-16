@@ -46,7 +46,7 @@ const hasAuth = (req, res, next) => {
     if (req.originalUrl.startsWith("/api/")) {
       return res.status(403).json({ error: "คุณเข้าสู่ระบบอยู่แล้ว!" });
     }
-    return res.redirect("/index");
+    return res.redirect("/mainmenu");
   }
   next();
 };

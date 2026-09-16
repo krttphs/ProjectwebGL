@@ -1,22 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const supabase = require("../config/supabaseClient");
-
-//middleware ตรวจสอบสิทธิ์ก่อน
-router.use(async (req, res, next) => {
-  const token = req.cookies.token;
-  const { data: { user } } = await supabase.auth.getUser(token);
-
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  req.user = user;
-  next();
-});
+const {requireAuth} = require("../middleware/authMiddleware");
 
 // เปิดแชทกับเพื่อน (หา room เดิม / สร้างใหม่)
-router.post("/open", async (req, res) => {
+router.post("/open",requireAuth, async (req, res) => {
   const userId = req.user.id;
   const { friendId } = req.body;
 
@@ -63,7 +51,7 @@ router.post("/open", async (req, res) => {
 });
 
 //โหลดประวัติข้อความทั้งหมดใน room เรียงจากเก่า → ใหม่
-router.get("/:roomId/messages", async (req, res) => {
+router.get("/:roomId/messages", requireAuth,async (req, res) => {
   const { roomId } = req.params;
 
   const { data, error } = await supabase
@@ -77,7 +65,7 @@ router.get("/:roomId/messages", async (req, res) => {
 });
 
 //ส่งข้อความ
-router.post("/send", async (req, res) => {
+router.post("/send", requireAuth,async (req, res) => {
   const { roomId, message } = req.body;
   const senderId = req.user.id;
 

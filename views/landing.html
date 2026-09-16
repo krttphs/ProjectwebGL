@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dev Life Simulator</title>
+
+    <link rel="stylesheet" href="/css/output.css">
+    <link rel="stylesheet" href="/css/landing.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=BBH+Bogle&display=swap" rel="stylesheet">
+
+    <style>
+</style>
+
+    <style>
+        .hero {
+            grid-template-columns: 1fr !important;
+            justify-items: center;
+        }
+
+        .hero-right {
+            width: 100%;
+            max-width: 850px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero-buttons {
+            justify-content: center;
+        }
+    </style>
+
+    <style>
+        body {
+            zoom: 1.25;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="landing-header">
+
+        <div class="logo">
+            OVERCODE
+        </div>
+
+        <nav class="landing-nav">
+            <a href="#about">ABOUT</a>
+            <a href="#how-to-play">HOW TO PLAY</a>
+            <a href="#game-modes">GAME MODES</a>
+        </nav>
+
+        <button class="nav-login-btn" onclick="goToLogin()">
+            LOGIN
+        </button>
+
+    </header>
+
+    <main>
+
+        <section class="hero">
+
+
+<div class="hero-right">
+
+                <div class="hero-tag">
+                    
+                </div>
+
+                <h1>
+                    ก้าวสู่การเป็น<br>
+                    <span>นักพัฒนา</span>
+                </h1>
+
+                <p>
+                    เขียนโค้ด ทำภารกิจ และบริหารชีวิตการทำงาน
+                    เพื่อเอาตัวรอดในโลกของนักพัฒนา
+                </p>
+
+                <div class="hero-buttons">
+
+                    <button class="start-btn" onclick="goToLogin()">
+                        เริ่มเกม
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+        <section class="about-section" id="about">
+
+            <div class="section-title">
+
+                <span>เกี่ยวกับเกม</span>
+
+                <h2>
+                    เกมนี้คืออะไร?
+                </h2>
+
+                <p>
+                    เกมแบบผู้เล่นหลายคน
+                    ที่ทักษะการเขียนโค้ดของคุณจะกำหนดเส้นทางการเล่น
+                </p>
+
+            </div>
+
+
+            <div class="about-content">
+
+                <div class="about-card">
+
+                    <div class="about-icon">
+                        💻
+                    </div>
+
+                    <h3>
+                        เขียนโค้ด
+                    </h3>
+
+                    <p>
+                        แก้โจทย์การเขียนโปรแกรมด้วยการเติมฟังก์ชันที่ขาดหายไป
+                        และทำให้โปรแกรมทำงานได้อย่างถูกต้อง
+                    </p>
+
+                </div>
+
+
+                <div class="about-card">
+
+                    <div class="about-icon">
+                        🎯
+                    </div>
+
+                    <h3>
+                        ทำภารกิจ
+                    </h3>
+
+                    <p>
+                        รับงานแบบสุ่ม ทดสอบคำตอบของคุณ
+                        และส่งงานเมื่อทำสำเร็จ
+                    </p>
+
+                </div>
+
+
+                <div class="about-card">
+
+                    <div class="about-icon">
+                        ☕
+                    </div>
+
+                    <h3>
+                        เอาตัวรอด
+                    </h3>
+
+                    <p>
+                        บริหารความเครียดและความหิว
+                        เพื่อให้สามารถทำงานต่อได้
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+        <section class="how-to-play" id="how-to-play">
+
+            <div class="section-title">
+
+                <span>
+                    วิธีการเล่น
+                </span>
+
+                <h2>
+                    HOW TO SURVIVE AS A DEVELOPER
+                </h2>
+
+                <p>
+                    เรียนรู้การทำงานและเอาตัวรอดในโลกของนักพัฒนา
+                </p>
+
+            </div>
+
+
+            <div class="how-to-grid">
+
+
+                <!-- STEP 01 -->
+
+                <div class="how-to-card">
+
+                    <div class="step-number">
+                        01
+                    </div>
+
+                    <div class="step-content">
+
+                        <h3>
+                            ค้นหาคอมพิวเตอร์
+                        </h3>
+
+                        <p>
+                            เดินไปหาคอมพิวเตอร์ที่ยังว่าง
+                            แล้วกด E
+                            เพื่อเป็นเจ้าของเครื่อง
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- STEP 02 -->
+
+                <div class="how-to-card">
+
+                    <div class="step-number">
+                        02
+                    </div>
+
+                    <div class="step-content">
+
+                        <h3>
+                            รับภารกิจ
+                        </h3>
+
+                        <p>
+                            กดปุ่ม
+                            Start Random a Task
+                            เพื่อรับโจทย์งานแบบสุ่ม
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- STEP 03 -->
+
+                <div class="how-to-card">
+
+                    <div class="step-number">
+                        03
+                    </div>
+
+                    <div class="step-content">
+
+                        <h3>
+                            เขียนโค้ด
+                        </h3>
+
+                        <p>
+                            เขียนฟังก์ชันที่โจทย์กำหนด
+                            ลงในช่องที่เตรียมไว้
+                            และเลือกภาษาโปรแกรมมิ่งได้ที่
+                            Language
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- STEP 04 -->
+
+                <div class="how-to-card">
+
+                    <div class="step-number">
+                        04
+                    </div>
+
+                    <div class="step-content">
+
+                        <h3>
+                            รันและทดสอบ
+                        </h3>
+
+                        <p>
+                            ใช้ตัวแปรที่โจทย์เตรียมไว้
+                            เพื่อทดสอบฟังก์ชัน
+                            แล้วกด Run
+                            เพื่อดูผลลัพธ์
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- STEP 05 -->
+
+                <div class="how-to-card">
+
+                    <div class="step-number">
+                        05
+                    </div>
+
+                    <div class="step-content">
+
+                        <h3>
+                            ส่งงาน
+                        </h3>
+
+                        <p>
+                            ตรวจสอบผลลัพธ์ด้านล่าง
+                            หากถูกต้องให้กด
+                            Submit
+                            เพื่อส่งงาน
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- STEP 06 -->
+
+                <div class="how-to-card mystery-card">
+
+                    <div class="step-number">
+                        06
+                    </div>
+
+                    <div class="step-content">
+
+                        <h3>
+                            นำกล่องปริศนาไปส่ง
+                        </h3>
+
+                        <p>
+                            หลังจากส่งงาน
+                            คุณจะได้รับ
+                            Mystery Box
+                            นำกล่องไปส่งให้หัวหน้า
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- STEP 07 -->
+
+                <div class="how-to-card danger-card">
+
+                    <div class="step-number">
+                        07
+                    </div>
+
+                    <div class="step-content">
+
+                        <h3>
+                            อย่ายอมแพ้
+                        </h3>
+
+                        <p>
+                            หากยอมแพ้กับโจทย์นี้
+                            สามารถกด Give Up ได้
+                            แต่จำไว้ว่าในกล่องปริศนา
+                            ข้อมูลไม่ถูกต้องแน่นอน...
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- SURVIVAL WARNING -->
+
+            <div class="survival-warning">
+
+                <h3>
+                    ☕ จัดการความเครียดและความหิว
+                </h3>
+
+                <p>
+                    บริหารความเครียดและความหิวของคุณให้ดี
+                    เติมกาแฟเมื่อรู้สึกว่าความเครียดสูงเกินไป
+                    เพราะถ้าเครียดเกินไป
+                    คุณจะทำงานต่อไม่ไหว!
+                </p>
+
+            </div>
+
+        </section>
+        <section class="game-modes-section" id="game-modes">
+
+            <div class="section-title">
+
+                <span>
+                    เลือกระดับความท้าทาย
+                </span>
+
+                <h2>
+                    โหมดการเล่น
+                </h2>
+
+                <p>
+                    เลือกรูปแบบการเล่นที่เหมาะกับคุณ
+                </p>
+
+            </div>
+
+
+            <div class="game-mode-grid">
+
+
+                <!-- โหมดสำนักงาน -->
+
+                <div class="game-mode-card">
+
+                    <div class="mode-number">
+                        MODE 01
+                    </div>
+
+                    <h3>
+                        โหมดสำนักงาน
+                    </h3>
+
+                    <p>
+                        เริ่มต้นชีวิตนักพัฒนา
+                        รับงาน เขียนโค้ด
+                        และทำงานร่วมกับผู้เล่นคนอื่น
+                    </p>
+
+                    <ul>
+
+                        <li>
+                            ภารกิจแบบสุ่ม
+                        </li>
+
+                        <li>
+                            โจทย์การเขียนโปรแกรม
+                        </li>
+
+                        <li>
+                            ผู้เล่นหลายคน
+                        </li>
+
+                        <li>
+                            รางวัล
+                        </li>
+
+                    </ul>
+
+                </div>
+
+
+                <!-- โหมดฮาร์ดคอร์ -->
+
+                <div class="game-mode-card hardcore-mode">
+
+                    <div class="mode-number">
+                        MODE 02
+                    </div>
+
+                    <h3>
+                        โหมดฮาร์ดคอร์
+                    </h3>
+
+                    <p>
+                        โหมดสำหรับผู้เล่นที่ต้องการ
+                        ความท้าทายที่มากขึ้น
+                    </p>
+
+                    <ul>
+
+                        <li>
+                            โจทย์ที่ยากขึ้น
+                        </li>
+
+                        <li>
+                            แรงกดดันที่สูงขึ้น
+                        </li>
+
+                        <li>
+                            Greater รางวัล
+                        </li>
+
+                        <li>
+                            ประสบการณ์แบบฮาร์ดคอร์
+                        </li>
+
+                    </ul>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <section class="developer-life-section">
+
+            <div class="section-title">
+
+                <span>
+                    ชีวิตของคุณ การตัดสินใจของคุณ
+                </span>
+
+                <h2>
+                    ชีวิตนักพัฒนา
+                </h2>
+
+                <p>
+                    การเขียนโค้ดไม่ใช่สิ่งเดียวที่คุณต้องจัดการ
+                </p>
+
+            </div>
+
+
+            <div class="life-grid">
+
+
+                <div class="life-card">
+
+                    <div class="life-icon">
+                        💻
+                    </div>
+
+                    <h3>
+                        การเขียนโค้ด
+                    </h3>
+
+                    <p>
+                        เขียนโค้ดและแก้ไขโจทย์
+                        เพื่อทำงานให้สำเร็จ
+                    </p>
+
+                </div>
+
+
+                <div class="life-card">
+
+                    <div class="life-icon">
+                        😰
+                    </div>
+
+                    <h3>
+                        ความเครียด
+                    </h3>
+
+                    <p>
+                        ความเครียดเพิ่มขึ้นจากการทำงาน
+                        จัดการก่อนที่จะสูงเกินไป
+                    </p>
+
+                </div>
+
+
+                <div class="life-card">
+
+                    <div class="life-icon">
+                        🍔
+                    </div>
+
+                    <h3>
+                        ความหิว
+                    </h3>
+
+                    <p>
+                        อย่าปล่อยให้ความหิว
+                        ทำให้ประสิทธิภาพในการทำงานลดลง
+                    </p>
+
+                </div>
+
+
+                <div class="life-card">
+
+                    <div class="life-icon">
+                        ☕
+                    </div>
+
+                    <h3>
+                        กาแฟ
+                    </h3>
+
+                    <p>
+                        เติมกาแฟเพื่อจัดการกับความเครียด
+                        และทำงานต่อให้สำเร็จ
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <section class="quest-section">
+
+            <div class="quest-content">
+
+                <div class="quest-text">
+
+                    <span>
+                        ทำงาน สำเร็จ รับรางวัล
+                    </span>
+
+                    <h2>
+                        ภารกิจและรางวัล
+                    </h2>
+
+                    <p>
+                        ทุกงานที่คุณทำสำเร็จ
+                        จะช่วยให้คุณก้าวหน้าในเส้นทางนักพัฒนา
+                    </p>
+
+                    <div class="reward-list">
+
+                        <div class="reward-item">
+                            <strong>EXP</strong>
+                            <span>เพิ่มระดับของคุณ</span>
+                        </div>
+
+                        <div class="reward-item">
+                            <strong>COINS</strong>
+                            <span>ใช้สำหรับสิ่งต่าง ๆ ภายในเกม</span>
+                        </div>
+
+                        <div class="reward-item">
+                            <strong>ACHIEVEMENTS</strong>
+                            <span>ปลดล็อกความสำเร็จ</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="quest-box">
+
+                    <div class="quest-box-header">
+                        ภารกิจแบบสุ่ม
+                    </div>
+
+                    <div class="quest-box-content">
+
+                        <div class="fake-code">
+                            <span>function</span>
+                            <span>solveTask</span>
+                            <span>(input) {</span>
+
+                            <br>
+
+                            <span class="indent">
+                            </span>
+
+                            <br>
+
+                            <span>
+                                }
+                            </span>
+                        </div>
+
+                        <div class="quest-status">
+                            พร้อมเขียนโค้ด
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+        <section class="compete-section">
+
+            <div class="section-title">
+
+                <span>
+                    เล่นร่วมกับผู้อื่น
+                </span>
+
+                <h2>
+                    แข่งขันและเชื่อมต่อ
+                </h2>
+
+                <p>
+                    ไม่ต้องทำงานคนเดียว
+                    พบกับผู้เล่นคนอื่นและแข่งขันกัน
+                </p>
+
+            </div>
+
+
+            <div class="compete-grid">
+
+                <div class="compete-card">
+
+                    <h3>
+                         ผู้เล่นหลายคน
+                    </h3>
+
+                    <p>
+                        ทำงานและแข่งขันร่วมกับผู้เล่นคนอื่น
+                    </p>
+
+                </div>
+
+
+                <div class="compete-card">
+
+                    <h3>
+                         กระดานจัดอันดับ
+                    </h3>
+
+                    <p>
+                        แข่งขันเพื่อก้าวขึ้นเป็นนักพัฒนา
+                        อันดับต้น ๆ
+                    </p>
+
+                </div>
+
+
+                <div class="compete-card">
+
+                    <h3>
+                         เพื่อน
+                    </h3>
+
+                    <p>
+                        เพิ่มเพื่อนและสร้างทีม
+                        สำหรับการเล่นร่วมกัน
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+        <section class="final-cta">
+
+            <div class="final-cta-content">
+
+                <span>
+                    เส้นทางอาชีพของคุณเริ่มต้นที่นี่
+                </span>
+
+                <h2>
+                    พร้อมก้าวสู่การเป็น<br>
+                    นักพัฒนาแล้วหรือยัง?
+                </h2>
+
+                <p>
+                    เข้าสู่โลกของเกม
+                    แล้วเริ่มต้นเส้นทางของคุณ
+                </p>
+
+                <button class="final-start-btn" onclick="goToLogin()">
+                    เริ่มเกม
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    
+    <footer class="landing-footer">
+    <div class="footer-contact"><br></div>
+</footer>
+
+
+    <script src="/js/landing.js"></script>
+
+</body>
+
+</html>

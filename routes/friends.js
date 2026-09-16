@@ -1,35 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const supabase = require("../config/supabaseClient");
-
-// Middleware ตรวจสอบ user (ต้องมี ไม่งั้น req.user.id จะหาไม่เจอและ Error)
-const verifyToken = async (req, res, next) => {
-    const token = req.cookies.token;
-    if (!token) return res.status(401).json({ error: "Unauthorized: No token provided" });
-
-    try {
-        // ใช้ Supabase ตรวจสอบ Token ให้ (เหมือนใน auth.js)
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-
-        if (error || !user) {
-            console.log("Supabase Auth Error:", error?.message);
-            return res.status(403).json({ error: "Invalid token" });
-        }
-
-        // ถ้าผ่าน ให้เก็บข้อมูล user ไว้ใช้ใน route ถัดไป
-        req.user = user; 
-        next();
-    } catch (err) {
-        console.error("Server Auth Error:", err);
-        return res.status(500).json({ error: "Server error during authentication" });
-    }
-};
-
-// ใช้ middleware กับทุก route
-router.use(verifyToken);
-
+const {requireAuth,hasAuth} = require("../middleware/authMiddleware");
 // 1. Search Users
-router.post('/search', async (req, res) => {
+router.post('/search', requireAuth,async (req, res) => {
     const { query } = req.body;
     const myId = req.user.id;
 
@@ -53,7 +27,7 @@ router.post('/search', async (req, res) => {
 });
 
 // 2. Send Friend Request
-router.post('/request', async (req, res) => {
+router.post('/request', requireAuth,async (req, res) => {
     const { targetId } = req.body;
     const myId = req.user.id;
 
@@ -74,7 +48,7 @@ router.post('/request', async (req, res) => {
 });
 
 // 3. Get Pending Requests
-router.get('/pending', async (req, res) => {
+router.get('/pending',requireAuth ,async (req, res) => {
     const myId = req.user.id;
 
     const { data: me } = await supabase.from('users').select('friend_requests').eq('id', myId).single();
@@ -92,7 +66,7 @@ router.get('/pending', async (req, res) => {
 });
 
 // 4. Accept Request
-router.post('/accept', async (req, res) => {
+router.post('/accept', requireAuth,async (req, res) => {
     const { requesterId } = req.body;
     const myId = req.user.id;
 
@@ -117,7 +91,7 @@ router.post('/accept', async (req, res) => {
 });
 
 // 5. Get My Friends List
-router.get('/list', async (req, res) => {
+router.get('/list', requireAuth,async (req, res) => {
     const myId = req.user.id;
     
     const { data: me } = await supabase.from('users').select('friends').eq('id', myId).single();
