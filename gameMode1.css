@@ -1,0 +1,242 @@
+      :root {
+        --bg: #0f1720;
+        --right-bg: rgba(20, 20, 35, 0.85);
+        --gutter-bg: #1e1e2e;
+        --gutter-color: #9aa0a6;
+        --text: #d7d7d7;
+        --accent: #3c7bd9;
+        --editor-font: "Fira Code", "Consolas", monospace;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+        background: #000;
+      }
+
+      /* --- Game Fullscreen Container --- */
+      .game-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1;
+      }
+
+      #unity-container {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      #lineNumbers {
+        white-space: pre;
+      }
+
+      canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+      }
+
+      /* --- Floating Editor Panel --- */
+      .editor-panel {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        bottom: 20px;
+        width: 95vw;
+        background: var(--right-bg);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        z-index: 100;
+        transition:
+          transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+          opacity 0.3s;
+        color: var(--text);
+      }
+
+      .editor-panel.hidden {
+        transform: translateX(450px);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* --- Toggle Button --- */
+      #toggle-editor-btn {
+        position: fixed;
+        top: 25px;
+        right: 25px;
+        z-index: 101;
+        padding: 10px 20px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(60, 123, 217, 0.4);
+      }
+
+      /* --- Inner Elements Styling --- */
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 15px;
+      }
+
+      .col-row {
+        display: flex;
+        gap: 10px;
+      }
+
+      .col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      label {
+        font-size: 12px;
+        color: var(--accent);
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      select,
+      textarea,
+      #output {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 8px;
+        border-radius: 6px;
+      }
+
+      .input-problem {
+        height: 80px;
+        resize: none;
+        font-size: 13px;
+      }
+
+      .editor-wrap {
+        flex: 1;
+        display: flex;
+        background: var(--gutter-bg);
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .gutter {
+        background: #111;
+        color: #555;
+        padding: 10px 5px;
+        text-align: right;
+        min-width: 30px;
+        font-family: var(--editor-font);
+        font-size: 13px;
+      }
+
+      .editor {
+        flex: 1;
+      }
+
+      #code {
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        border: none;
+        color: #50fa7b;
+        font-family: var(--editor-font);
+        font-size: 13px;
+        padding: 10px;
+        outline: none;
+        resize: none;
+      }
+
+      #output {
+        height: 100px;
+        overflow-y: auto;
+        margin-top: 10px;
+        font-family: var(--editor-font);
+        font-size: 12px;
+        white-space: pre-wrap;
+        color: #8be9fd;
+      }
+
+      button {
+        cursor: pointer;
+        padding: 8px 15px;
+        border-radius: 6px;
+        border: none;
+        background: #44475a;
+        color: white;
+        transition: 0.2s;
+      }
+
+      button:hover {
+        filter: brightness(1.2);
+      }
+
+      #runBtn {
+        background: #50fa7b;
+        color: #282a36;
+        font-weight: bold;
+      }
+
+      #submitBtn {
+        background: #ff79c6;
+        color: white;
+        font-weight: bold;
+      }
+
+      /* Unity Loading Elements (สำคัญมากเพื่อให้ JS ไม่ Error) */
+      #unity-loading-bar {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+        z-index: 2;
+      }
+
+      #unity-progress-bar-empty {
+        width: 141px;
+        height: 18px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+      }
+
+      #unity-progress-bar-full {
+        width: 0%;
+        height: 100%;
+        background: var(--accent);
+        border-radius: 10px;
+        transition: 0.3s;
+      }
+
+      .waitforUnityLoad {
+        animation: waitforUnityLoad-animate 10s ease-in-out forwards;
+      }
+
+      @keyframes waitforUnityLoad-animate {
+        from {
+          opacity: 0;
+        }
+
+        to {
+          opacity: 1;
+        }
+      }
