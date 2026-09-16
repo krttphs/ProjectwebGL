@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Unity Web Player | my first game</title>
+  <link rel="shortcut icon" href="/TemplateData/favicon.ico" />
+  <link rel="stylesheet" href="/TemplateData/style.css" />
+  <link rel="icon" type="image/png" href="/img/webIcon.png" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseBrowser.js"></script>
+  <link rel="stylesheet" href="/css/gameMode1.css">
+
+</head>
+
+<body>
+  <!-- Game -->
+  <button id="toggle-editor-btn" style="display: none" onclick="toggleWebUI()">
+    Open Editor
+  </button>
+
+  <div class="game-layer">
+    <div id="score-board" style="
+          display: flex;
+          position: absolute;
+          z-index: 99;
+          width: 100%;
+          justify-content: center;
+          margin-top: 20px;
+          opacity: 0;
+          pointer-events: none;
+          flex-direction: column;
+          align-items: center;
+        ">
+      <h3 style="font-size: large">Score</h3>
+      <h2 id="score-number" style="margin-top: -10px">0</h2>
+    </div>
+    <div id="unity-container">
+      <canvas id="unity-canvas"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-fullscreen-button" style="display: none"></div>
+      <div id="unity-warning" style="position: absolute; top: 0; left: 0"></div>
+    </div>
+  </div>
+
+  <div id="timer-display" style="
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 99;
+        color: #50fa7b;
+        font-size: 28px;
+        font-weight: bold;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-family: monospace;
+        border: 1px solid #50fa7b;
+        display: none;
+      ">
+    00:00
+  </div>
+
+  <div id="summary-modal" style="
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        color: white;
+        backdrop-filter: blur(5px);
+      ">
+    <div style="
+          background: #1e1e2e;
+          padding: 40px 60px;
+          border-radius: 16px;
+          text-align: center;
+          border: 2px solid #ff79c6;
+          box-shadow: 0 0 30px rgba(255, 121, 198, 0.4);
+        ">
+      <h1 style="color: #ff79c6; font-size: 40px; margin-top: 0">
+        Time's Up!
+      </h1>
+      <h2 style="color: #d7d7d7">สรุปผลการแข่งขัน</h2>
+      <p style="font-size: 24px">
+        คะแนนที่ทำได้:
+        <span id="final-score" style="color: #50fa7b; font-weight: bold">0</span>
+      </p>
+      <p style="font-size: 24px">
+        ได้เงิน:
+        <span id="final-coins" style="color: #ffbd2e; font-weight: bold">0</span>
+        🪙
+      </p>
+
+      <button onclick="window.location.href = '/'" style="
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: #3c7bd9;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+          ">
+        กลับสู่หน้าหลัก (Lobby)
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-panel hidden" id="editor-panel">
+    <div class="controls">
+      <div class="col-row">
+        <div class="col">
+          <label>Task</label>
+          <h3 id="taskTitle" style="margin-top: -3px; height: 28px"></h3>
+        </div>
+        <div class="col">
+          <label>Difficulty</label>
+          <h3 id="difficulty" style="margin-top: -3px; height: 28px">
+            Difficulty here...
+          </h3>
+        </div>
+        <div class="col">
+          <label>Language</label>
+          <select id="lang">
+            <option value="62">Java</option>
+            <option value="63">JavaScript</option>
+            <option value="71">Python</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="col">
+        <label>Task Description</label>
+        <textarea id="problem" class="input-problem" readonly>
+      กรุณาสุ่มโจทย์เพื่อเริ่มเล่น...</textarea>
+      </div>
+
+      <div style="display: flex; gap: 8px">
+        <!-- <button
+            id="randomQuestBtn"
+            style="flex: 2; background: var(--accent)"
+          >
+            Random Task
+          </button> -->
+        <button onclick="giveUp()" style="flex: 1">Give up</button>
+      </div>
+    </div>
+
+    <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 5px;
+        ">
+      <label>Code Editor</label>
+      <div style="display: flex; gap: 5px">
+        <button id="runBtn">Run</button>
+        <button id="submitBtn">Submit</button>
+      </div>
+    </div>
+
+    <div class="editor-wrap">
+      <div style="
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+          ">
+        <!-- ช่องที่ 1: โค้ดตั้งต้น -->
+        <div style="display: flex; flex-direction: column; flex: 1">
+          <label style="color: #ffbd2e">1.ตัวแปร / ฟังก์ชันที่เตรียมไว้ให้</label>
+          <textarea id="code-part1" style="flex: 1; resize: none; background: #282a36; color: #f8f8f2" readonly>
+// รอรับข้อมูลจากโจทย์...</textarea>
+        </div>
+
+        <!-- ช่องที่ 2: ไส้ในฟังก์ชัน (ให้ผู้เล่นเติม) -->
+        <div style="display: flex; flex-direction: column; flex: 1">
+          <label style="color: #50fa7b">2. Your Function Logic</label>
+          <textarea id="code-part2" style="
+                flex: 1;
+                resize: none;
+                min-height: 100px;
+                background: #282a36;
+                color: #50fa7b;
+                font-family: var(--editor-font);
+                padding: 10px;
+              ">
+function solve(a, b) {
+    // สร้างฟังก์ชันของคุณ...
+}</textarea>
+        </div>
+
+        <!-- ช่องที่ 3: เรียกใช้ฟังก์ชัน (ให้ผู้เล่นเติม) -->
+        <div style="display: flex; flex-direction: column; flex: 1">
+          <label style="color: #ff79c6">3. Function Execution</label>
+          <textarea id="code-part3" style="
+                flex: 1;
+                resize: vertical;
+                background: #282a36;
+                color: #ff79c6;
+                font-family: var(--editor-font);
+                padding: 10px;
+              ">
+// เรียกใช้ฟังก์ชันที่นี่...
+console.log(solve(x, y));</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div id="output">Output logs will appear here...</div>
+  </div>
+  <div class="editor-panel hidden" id="getATask-panel">
+    <h1>Start working</h1>
+    <div style="
+          display: flex;
+          flex: 1;
+          max-height: 15px;
+          background-color: #575656;
+          border-radius: 50px;
+        "></div>
+    <div style="
+          display: flex;
+          flex: 1;
+          justify-content: center;
+          align-items: center;
+        ">
+      <button id="randomQuestBtn">Start random a task</button>
+    </div>
+  </div>
+  <div id="waiting-screen" style="
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        flex-direction: column;
+      ">
+    <h1 class="animate-pulse">Waiting for other players...</h1>
+    <div id="ready-status" class="text-gray-400">Loading...</div>
+  </div>
+  <div id="stress-message" style="
+        display: none;
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(239, 68, 68, 0.5);
+        color: white;
+        padding: 5px;
+        border-radius: 12px;
+        z-index: 9999;
+        box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px;
+        font-size: 8px;
+      ">
+    <h1>คุณมีความเครียดสะสมเยอะเกินไป ไม่สามารถทำงานต่อได้</h1>
+  </div>
+  <div id="own_a_computer_message" style="
+        display: none;
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(239, 68, 68, 0.5);
+        color: white;
+        padding: 5px;
+        border-radius: 12px;
+        z-index: 9999;
+        box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px;
+        font-size: 8px;
+      ">
+    <h1>
+      คุณมีคอมพิวเตอร์ประจำตัวอยู่แล้ว ไม่สามารถทำงานที่เครื่องว่างนี้ได้!
+    </h1>
+  </div>
+  <div id="not-right-now-message" style="
+        display: none;
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(239, 68, 68, 0.5);
+        color: white;
+        padding: 5px;
+        border-radius: 12px;
+        z-index: 9999;
+        box-shadow: rgba(255, 0, 0, 0.5) 0px 4px 15px;
+        font-size: 8px;
+      ">
+    <h1>เพื่อนยังไม่เริ่มทำงาน ใจเย็นๆ</h1>
+  </div>
+  <script src="/js/gameMode1.js"></script>
+</body>
+
+</html>
