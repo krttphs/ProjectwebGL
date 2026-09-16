@@ -238,6 +238,56 @@
         border-radius: 10px;
         transition: 0.3s;
       }
+      /* --- Ball Progress Bar (Red/Green) --- */
+      #ball-progress-board {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 99;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        background: rgba(0, 0, 0, 0.55);
+        padding: 10px 18px;
+        border-radius: 10px;
+        color: #d7d7d7;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+
+      #ball-progress-board.visible {
+        opacity: 1;
+      }
+
+      #ball-progress-board h3 {
+        margin: 0;
+        font-size: 13px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        opacity: 0.8;
+      }
+
+      #ball-progress-bar-empty {
+        width: 260px;
+        height: 16px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      #ball-progress-bar-full {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #ff5555, #50fa7b);
+        border-radius: 10px;
+        transition: width 0.4s ease;
+      }
+
       .waitforUnityLoad {
         animation: waitforUnityLoad-animate 10s ease-in-out forwards;
       }
@@ -280,6 +330,12 @@
       >
         <h3 style="font-size: large">Score</h3>
         <h2 id="score-number" style="margin-top: -10px">0</h2>
+      </div>
+      <div id="ball-progress-board">
+        <h3>Progress</h3>
+        <div id="ball-progress-bar-empty">
+          <div id="ball-progress-bar-full"></div>
+        </div>
       </div>
       <div id="unity-container">
         <canvas id="unity-canvas"></canvas>
@@ -714,6 +770,65 @@ console.log(solve(x, y));</textarea
         if (codePart2) codePart2.addEventListener("keydown", handleTab);
         if (codePart3) codePart3.addEventListener("keydown", handleTab);
       })();
+      // -------- Ball Progress (Red/Green) --------
+      // ปรับค่าเพิ่ม/ลดต่อลูกบอล 1 ลูกได้ตามต้องการ
+      const GREEN_BALL_INCREMENT = 10;
+      const RED_BALL_DECREMENT = 10;
+      const BALL_PROGRESS_DISPLAY_MS = 5000; // แสดง bar ค้างไว้กี่ ms หลังบอลมาถึง
+
+      let ballProgress = 0; // เริ่มต้นที่ 0 และห้ามต่ำกว่า 0 (0-100)
+      let ballProgressHideTimeout = null;
+
+      function setBallProgressUI(value) {
+        const fill = document.getElementById("ball-progress-bar-full");
+        if (fill) fill.style.width = value + "%";
+      }
+      setBallProgressUI(ballProgress);
+
+      function showBallProgressBoard() {
+        const board = document.getElementById("ball-progress-board");
+        if (!board) return;
+
+        board.classList.add("visible");
+
+        clearTimeout(ballProgressHideTimeout);
+        ballProgressHideTimeout = setTimeout(() => {
+          board.classList.remove("visible");
+        }, BALL_PROGRESS_DISPLAY_MS);
+      }
+
+      function updateBallProgress(delta) {
+        ballProgress = Math.min(100, Math.max(0, ballProgress + delta));
+        setBallProgressUI(ballProgress);
+        
+        // fetch("/api/game/updateBallProgress", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ roomId: currentRoomId, progress: ballProgress }),
+        // });
+      }
+
+      // เรียกจากฝั่ง Unity (ผ่าน DeskBallBridge.jslib) ทุกครั้งที่มีคนกด E วางบอลที่โต๊ะ
+      // ballName ที่ Unity ส่งมาคือชื่อ Object ของลูกบอล เช่น "GreenBall" หรือ "RedBall"
+      window.OnBallSubmitted = function (ballName) {
+        console.log("Unity ส่งบอลมาที่เว็บ:", ballName);
+
+        const name = (ballName || "").toLowerCase();
+
+        if (name.includes("green")) {
+          updateBallProgress(GREEN_BALL_INCREMENT);
+          showBallProgressBoard();
+        } else if (name.includes("red")) {
+          updateBallProgress(-RED_BALL_DECREMENT);
+          showBallProgressBoard();
+        } else {
+          console.warn(
+            "[OnBallSubmitted] ไม่รู้จักชนิดของลูกบอล (ไม่มีคำว่า green/red ในชื่อ):",
+            ballName,
+          );
+        }
+      };
+
       let myScore = 0;
       async function updateScore(newScore) {
         myScore += newScore;
