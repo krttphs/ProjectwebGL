@@ -26,7 +26,7 @@ router.get("/room/:roomId", requireAuth, async (req, res) => {
   try {
     const { data: room, error } = await supabase
       .from("game_rooms")
-      .select("end_time, morning_time, noon_time, evening_time")
+      .select("end_time, morning_time, noon_time, evening_time, status")
       .eq("id", req.params.roomId)
       .single();
 
@@ -40,42 +40,48 @@ router.get("/room/:roomId", requireAuth, async (req, res) => {
 
 router.post("/endgame/:roomId", requireAuth, async (req, res) => {
   try {
-    const { error } = await supabase
+    const { roomId } = req.params;
+    const userId = req.user.id;
+ 
+    const { data: room, error: roomError } = await supabase
       .from("game_rooms")
-      .update({ status: "end" })
-      .eq("id", req.params.roomId);
-    if (error) throw error;
-    const { data: playerData, error: playerError } = await supabase
-      .from("room_players")
-      .select("score,reward_claimed")
-      .eq("room_id", req.params.roomId)
-      .eq("player_id", req.user.id)
+      .select("status, end_time, morning_time, noon_time, evening_time")
+      .eq("id", roomId)
       .single();
 
-    if (playerData && playerData.score > 0 && playerData.reward_claimed === false) {
-      const { error: updateScoreError } = await supabase.rpc("add_coins", {
-        user_id: req.user.id,
-        amount: playerData.score,
-      });
-
-      if(updateScoreError) throw updateScoreError;
-      
-      const { error: claimError } = await supabase
-      .from("room_players")
-      .update({reward_claimed:true})
-      .eq("room_id",req.params.roomId)
-      .eq("player_id",req.user.id)
-      
-      if(claimError) throw claimError
-      
+    if (roomError || !room) {
+      return res.status(404).json({ error: "Room not found" });
     }
 
-    res.json({ success: true });
+    const isTimeUp = new Date() >= new Date(room.end_time);
+
+    if (room.status === "playing" && isTimeUp) {
+      const totalTime = (room.morning_time || 0) + (room.noon_time || 0) + (room.evening_time || 0);
+
+      await supabase
+        .from("game_rooms")
+        .update({ status: "finished", duration_time: totalTime })
+        .eq("id", roomId)
+        .eq("status", "playing");
+        
+      room.status = "finished";
+    }
+
+    if (room.status !== "finished") {
+      return res.status(400).json({ error: "Game has not finished yet" });
+    }
+
+    const { data: rewardData, error: rewardError } = await supabase.rpc("claim_player_reward", {
+      p_room_id: roomId,
+      p_player_id: userId,
+    });
+
+    if (rewardError) throw rewardError;
+
+    res.json({ success: true, result: rewardData });
   } catch (err) {
-    console.error("End game error.", err);
-    res
-      .status(500)
-      .json({ error: "Unable to end the game messaging from server." });
+    console.error("End game error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -83,17 +89,44 @@ router.post("/ready", requireAuth, async (req, res) => {
   const { roomId } = req.body;
   const userId = req.user.id;
 
-  await supabase.from("player_ready_status").upsert({ room_id: roomId, player_id: userId, is_ready: true });
+  const { error: upsertError } = await supabase
+    .from("player_ready_status")
+    .upsert({ room_id: roomId, player_id: userId, is_ready: true });
 
-  const { count: readyCount } = await supabase.from("player_ready_status").select("*", {count: 'exact'}).eq("room_id", roomId).eq("is_ready", true);
-  const { count: totalPlayers } = await supabase.from("room_players").select("*", {count: 'exact'}).eq("room_id", roomId);
+  if (upsertError) return res.status(500).json({ error: upsertError.message });
 
-  if (readyCount >= totalPlayers) {
-    const {data:room} = await supabase.from("game_rooms").select("morning_time, noon_time, evening_time").eq("id",roomId).single()
-    const totalSeconds = room.morning_time + room.noon_time + room.evening_time;
+  const { data: room, error: roomError } = await supabase
+    .from("game_rooms")
+    .select("status, morning_time, noon_time, evening_time")
+    .eq("id", roomId)
+    .single();
+
+  if (roomError) return res.status(500).json({ error: roomError.message });
+
+  const { count: readyCount } = await supabase
+    .from("player_ready_status")
+    .select("*", { count: "exact", head: true })
+    .eq("room_id", roomId)
+    .eq("is_ready", true);
+
+  const { count: totalPlayers } = await supabase
+    .from("room_players")
+    .select("*", { count: "exact", head: true })
+    .eq("room_id", roomId);
+
+  const safeReady = readyCount ?? 0;
+  const safeTotal = totalPlayers ?? 0;
+
+  if (safeTotal > 0 && safeReady >= safeTotal && room.status === "loading") {
+    const totalSeconds = (room.morning_time || 0) + (room.noon_time || 0) + (room.evening_time || 0);
     const timeEnd = new Date(Date.now() + totalSeconds * 1000).toISOString();
-    await supabase.from("game_rooms").update({ status: "playing", end_time: timeEnd }).eq("id", roomId);
+
+    await supabase
+      .from("game_rooms")
+      .update({ status: "playing", end_time: timeEnd })
+      .eq("id", roomId);
   }
+
   res.json({ success: true });
 });
 
@@ -210,6 +243,20 @@ router.patch("/code-part2-part3",requireAuth,async(req,res)=>{
     res.json({success: true})
   } catch(error){
     res.status(500).json({ error: error.message });
+  }
+})
+
+router.patch("/updateProgress",requireAuth,async(req,res)=>{
+  try{
+    const {roomId , progress} = req.body
+    const { data, error } = await supabase.rpc("update_room_progress", {
+      p_room_id: roomId,
+      p_progress: progress,
+    });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true, data });
+  } catch(error){
+    res.status(500).json({error:error.message})
   }
 })
 

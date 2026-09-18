@@ -226,8 +226,8 @@
         border-radius: 10px;
         transition: 0.3s;
       }
-      /* --- Ball Progress Bar (Red/Green) --- */
-      #ball-progress-board {
+      /* --- Progress Bar (Red/Green) --- */
+      #progress-board {
         position: absolute;
         top: 20px;
         left: 50%;
@@ -247,11 +247,11 @@
         transition: opacity 0.3s ease;
       }
 
-      #ball-progress-board.visible {
+      #progress-board.visible {
         opacity: 1;
       }
 
-      #ball-progress-board h3 {
+      #progress-board h3 {
         margin: 0;
         font-size: 13px;
         letter-spacing: 1px;
@@ -259,7 +259,7 @@
         opacity: 0.8;
       }
 
-      #ball-progress-bar-empty {
+      #progress-bar-empty {
         width: 260px;
         height: 16px;
         background: rgba(255, 255, 255, 0.15);
@@ -268,7 +268,7 @@
         border: 1px solid rgba(255, 255, 255, 0.2);
       }
 
-      #ball-progress-bar-full {
+      #progress-bar-full {
         width: 0%;
         height: 100%;
         background: linear-gradient(90deg, #ff5555, #50fa7b);

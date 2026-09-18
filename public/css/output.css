@@ -479,21 +479,6 @@
   .w-80 {
     width: calc(var(--spacing) * 80);
   }
-  .w-\[10\%\] {
-    width: 10%;
-  }
-  .w-\[15\%\] {
-    width: 15%;
-  }
-  .w-\[20\%\] {
-    width: 20%;
-  }
-  .w-\[30\%\] {
-    width: 30%;
-  }
-  .w-\[40\%\] {
-    width: 40%;
-  }
   .w-\[50\%\] {
     width: 50%;
   }
@@ -1622,24 +1607,9 @@
       height: calc(var(--spacing) * 16);
     }
   }
-  .md\:w-\[18\%\] {
-    @media (width >= 48rem) {
-      width: 18%;
-    }
-  }
-  .md\:w-\[20\%\] {
-    @media (width >= 48rem) {
-      width: 20%;
-    }
-  }
   .md\:w-\[30\%\] {
     @media (width >= 48rem) {
       width: 30%;
-    }
-  }
-  .md\:w-\[200\%\] {
-    @media (width >= 48rem) {
-      width: 200%;
     }
   }
   .lg\:scale-100 {
