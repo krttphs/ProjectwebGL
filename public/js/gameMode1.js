@@ -417,14 +417,42 @@ function notifyUnityEditorClosed() {
 }
 let isGetATask = false;
 let friendTask = false;
-function setEditorOpen(open) {
+let isLanguagesLoaded = false;
+async function setEditorOpen(open) {
   editorOpen = open;
   const editorPanel = document.getElementById("editor-panel");
   const getATaskPanel = document.getElementById("getATask-panel");
   const btn = document.getElementById("toggle-editor-btn");
   const codeTextarea = document.getElementById("code-part2");
   const unityCanvas = document.getElementById("unity-canvas");
+  const langBody = document.getElementById("lang");
   if (open) {
+    if (!isLanguagesLoaded) {
+      try {
+        const langs = await fetch("/api/game/languages");
+        if (langs.ok) {
+          const languages = await langs.json();
+          const list = Array.isArray(languages) ? languages : languages.data;
+
+          if (Array.isArray(list)) {
+            langBody.innerHTML = "";
+            list.forEach((l) => {
+              const op = document.createElement("option");
+              op.value = l.judge0_id;
+              op.textContent = l.name;
+              langBody.appendChild(op);
+            });
+            isLanguagesLoaded = true;
+          } else {
+            console.error("Languages data format is invalid:", languages);
+          }
+        } else {
+          console.error("Failed to load languages, status:", langs.status);
+        }
+      } catch (err) {
+        console.error("Error fetching languages:", err);
+      }
+    }
     btn.textContent = "Close Editor";
 
     if (document.pointerLockElement) {
@@ -652,7 +680,7 @@ async function subscribeGameStatus(roomId) {
       },
     )
     .subscribe();
-    try {
+  try {
     const res = await fetch(`/api/game/room/${roomId}`);
     if (res.ok) {
       const roomData = await res.json();

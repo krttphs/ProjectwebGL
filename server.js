@@ -2,7 +2,7 @@ const express = require("express");
 const env = require("dotenv");
 const path = require("path");
 const cookieParser = require("cookie-parser");
-
+const { requireAdmin } = require("./middleware/adminMiddleware");
 env.config();
 
 // const questRoutes = require("./routes/quests"); 
@@ -13,7 +13,7 @@ const chatRoutes = require("./routes/chat");
 const lobbyRoutes = require("./routes/lobby");
 const gameRoutes = require("./routes/game")
 const profileRoutes = require("./routes/profile");
-
+const adminRoutes = require("./routes/adminRoutes")
 
 const { requireAuth, hasAuth } = require("./middleware/authMiddleware")
 
@@ -35,6 +35,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/lobby", lobbyRoutes);
 app.use("/api/game", gameRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/admin", adminRoutes);
 // Frontend Route 
 // Frontend Route 
 app.get("/", (req, res) => {
@@ -78,6 +79,12 @@ app.get("/gamemode1", requireAuth, (req, res) => {
     root: path.join(__dirname, "views")
   });
 });
+
+app.get("/admin",requireAdmin,(req,res)=>{
+  res.sendFile("admin.html",{
+    root:path.join(__dirname,"views")
+  })
+})
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

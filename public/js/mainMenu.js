@@ -12,6 +12,12 @@ function goToQuest() { window.location.href = "/quest"; }
 
 function goToSettings() { window.location.href = "/settings"; }
 
+function goToAdmin() { window.location.href = "/admin"; }
+
+fetch("/api/admin/me").then((r) => {
+  if (r.ok) document.getElementById("adminBtn").hidden = false;
+});
+
 function logout() {
     fetch("/api/auth/logout", { method: "POST" })
         .then(() => {

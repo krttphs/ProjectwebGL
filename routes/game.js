@@ -294,4 +294,18 @@ router.patch("/updateProgress", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/languages",async (req,res) =>{
+  try{
+    const {data,error} = await supabase.from("languages").select("name, judge0_id")
+    if(error){
+      throw error
+    }
+    if(data){
+      res.json(data || [])
+    }
+  } catch(error){
+    res.status(500).json({ error: error.message });
+  }
+})
+
 module.exports = router;

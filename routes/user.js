@@ -211,40 +211,6 @@ router.patch("/profile", requireAuth, async (req, res) => {
 
 });
 
-
-// API: บวกเหรียญ
-router.post("/add-coins", requireAuth, async (req, res) => {
-
-  const { amount } = req.body;
-  const userId = req.user.id;
-
-  const { error } = await supabase.rpc("add_coins", {
-    user_id: userId,
-    amount: amount
-  });
-
-  if (error) {
-
-    return res.status(500).json({
-      error: error.message
-    });
-
-  }
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("coins")
-    .eq("id", userId)
-    .single();
-
-  res.json({
-    message: "ได้รับเหรียญแล้ว",
-    newBalance: userData?.coins || 0
-  });
-
-});
-
-
 // API: ดูยอดเงิน
 router.get("/balance", requireAuth, async (req, res) => {
 

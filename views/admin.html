@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OVERCODE GAME - ADMIN</title>
+    <link rel="icon" type="image/png" href="/img/webIcon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <header class="bar">
+        <h1>Admin</h1>
+        <nav class="tabs">
+            <button class="tab active" data-tab="quests">Quests</button>
+            <button class="tab" data-tab="languages">Languages</button>
+        </nav>
+        <button class="ghost" onclick="location.href='/mainmenu'">Back to menu</button>
+    </header>
+
+    <main id="gate" class="msg">Checking permission…</main>
+
+    <main id="app" hidden>
+        <!-- QUESTS -->
+        <section id="tab-quests">
+            <div class="head">
+                <h2>Quests</h2>
+                <button id="newQuest">Add quest</button>
+            </div>
+            <div class="scroll">
+                <table>
+                    <thead><tr><th>Title</th><th>Level</th><th>Rewards</th><th>Active</th><th></th></tr></thead>
+                    <tbody id="questRows"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- LANGUAGES -->
+        <section id="tab-languages" hidden>
+            <div class="head">
+                <h2>Languages</h2>
+                <button id="newLang">Add language</button>
+            </div>
+            <div class="scroll">
+                <table>
+                    <thead><tr><th>ID</th><th>Name</th><th>Judge0 ID</th><th></th></tr></thead>
+                    <tbody id="langRows"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Quest dialog -->
+    <dialog id="questDlg">
+        <div class="form">
+            <h3 id="questDlgTitle">Quest</h3>
+            <label>Title <input id="q_title"></label>
+            <label>Description <textarea id="q_description" rows="3"></textarea></label>
+            <div class="row">
+                <label>Level
+                    <select id="q_level">
+                        <option>easy</option><option>medium</option><option>hard</option>
+                    </select>
+                </label>
+                <label>Rewards <input id="q_rewards" type="number" min="0" value="0"></label>
+                <label class="check"><input id="q_is_active" type="checkbox" checked> Active</label>
+            </div>
+            <label>Input (run) <textarea id="q_input_run" rows="2"></textarea></label>
+            <label>Input (submit) <textarea id="q_input_submit" rows="2"></textarea></label>
+            <label>Expected output <textarea id="q_expected_output" rows="2"></textarea></label>
+            <label>Shown expected output <textarea id="q_show_expect_output" rows="2"></textarea></label>
+            <label>Setup code: Python <textarea class="code" id="q_setup_code_python" rows="4"></textarea></label>
+            <label>Setup code: JavaScript <textarea class="code" id="q_setup_code_js" rows="4"></textarea></label>
+            <label>Setup code: Java <textarea class="code" id="q_setup_code_java" rows="4"></textarea></label>
+            <p class="err" id="questErr"></p>
+            <div class="actions">
+                <button class="ghost" id="questCancel">Cancel</button>
+                <button id="questSave">Save quest</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Language dialog -->
+    <dialog id="langDlg">
+        <div class="form">
+            <h3 id="langDlgTitle">Language</h3>
+            <label>Name <input id="l_name" placeholder="Python"></label>
+            <label>Judge0 language ID <input id="l_judge0_id" type="number" placeholder="71"></label>
+            <p class="err" id="langErr"></p>
+            <div class="actions">
+                <button class="ghost" id="langCancel">Cancel</button>
+                <button id="langSave">Save language</button>
+            </div>
+        </div>
+    </dialog>
+
+    <script src="/js/admin.js"></script>
+</body>
+</html>
