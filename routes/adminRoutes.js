@@ -3,7 +3,6 @@ const router = express.Router();
 const supabaseAdmin = require("../config/supabaseAdmin");
 const { requireAdmin } = require("../middleware/adminMiddleware");
 
-router.use(express.json());
 router.use(requireAdmin);
 
 router.get("/me", (req, res) => res.json({ ok: true }));
