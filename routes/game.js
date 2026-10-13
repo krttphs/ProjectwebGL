@@ -353,7 +353,7 @@ router.post("/submissions", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "ข้อมูลไม่ครบ" });
   }
   try {
-    // 1. หาโจทย์จากเครื่อง (เพื่อนจะได้กดรันได้ด้วย)
+    //หาโจทย์จากเครื่อง (เพื่อนจะได้กดรันได้ด้วย)
     const { data: owner, error: ownerErr } = await supabase
       .from("room_players")
       .select("player_id, current_quest_id")
@@ -364,7 +364,7 @@ router.post("/submissions", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "เครื่องนี้ยังไม่มีโจทย์" });
     }
 
-    // 2. Submit ได้เฉพาะเจ้าของเครื่อง
+    //Submit ได้เฉพาะเจ้าของเครื่อง
     if (type === "submit" && owner.player_id !== req.user.id) {
       return res.status(403).json({ error: "ส่งได้เฉพาะเจ้าของเครื่อง" });
     }
@@ -382,7 +382,7 @@ router.post("/submissions", requireAuth, async (req, res) => {
       return res.json({ success, status, score });
     };
 
-    // 3. ดึง input / คำตอบจาก DB
+    //ดึง input / คำตอบจาก DB
     const { data: quest, error: questErr } = await supabase
       .from("quests")
       .select("input_run, input_submit, expected_output")
@@ -390,7 +390,7 @@ router.post("/submissions", requireAuth, async (req, res) => {
       .single();
     if (questErr) throw questErr;
 
-    // 4. ส่งไปให้ judge service รัน
+    //ส่งไปให้ judge service รัน
     const stdin = type === "submit" ? quest.input_submit : quest.input_run;
     const judgeRes = await fetch(`${process.env.JUDGE_URL}/run`, {
       method: "POST",
@@ -404,13 +404,13 @@ router.post("/submissions", requireAuth, async (req, res) => {
     if (!judgeRes.ok) throw new Error("judge error " + judgeRes.status);
     const r = await judgeRes.json();
 
-    // 5. คอมไพล์ไม่ผ่าน
+    //คอมไพล์ไม่ผ่าน
     if (r.status.id === 6) {
       if (type === "submit") return sendSubmitResult(false, r.status);
       return res.json(r);
     }
 
-    // 6. Submit → เทียบคำตอบที่ backend หลัก
+    //เทียบคำตอบ
     if (type === "submit") {
       const success =
         r.status.id === 3 &&
