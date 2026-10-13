@@ -25,103 +25,78 @@ async function createRoom(userId) {
   return newRoomId;
 }
 
+async function countPlayers(roomId) {
+  const { count } = await supabase
+    .from("room_players")
+    .select("*", { count: "exact", head: true })
+    .eq("room_id", roomId);
+  return count || 0;
+}
+
 router.post("/find-match", requireAuth, async (req, res) => {
+  const userId = req.user.id;
+
   try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        error: "Unauthorized: ไม่พบข้อมูลผู้ใช้"
-      });
+    // 1. ยังค้างอยู่ในห้องที่ยังไม่เริ่มไหม → ถ้าใช่ กลับไปห้องเดิม
+    const { data: myRows, error: myErr } = await supabase
+      .from("room_players")
+      .select("room_id")
+      .eq("player_id", userId);
+    if (myErr) throw myErr;
+
+    const myRoomIds = (myRows || []).map((r) => r.room_id);
+    if (myRoomIds.length > 0) {
+      const { data: myRoom, error: roomErr } = await supabase
+        .from("game_rooms")
+        .select("id, leader_id")
+        .in("id", myRoomIds)
+        .in("status", ["waiting", "full"])
+        .limit(1)
+        .maybeSingle();
+      if (roomErr) throw roomErr;
+
+      if (myRoom) {
+        return res.json({
+          roomId: myRoom.id,
+          isLeader: myRoom.leader_id === userId,
+          playerCount: await countPlayers(myRoom.id),
+        });
+      }
     }
 
-    const userId = req.user.id;
-
-    // หาห้องที่ยัง 'waiting' อยู่
+    // 2. หาห้องว่างของคนอื่น
     const { data: rooms, error: searchError } = await supabase
       .from("game_rooms")
-      .select("*")
+      .select("id")
       .eq("status", "waiting")
+      .neq("leader_id", userId)
       .limit(1);
-
     if (searchError) throw searchError;
 
-    let roomId;
-    let isLeader = false;
-
-    // rooms = [
-    //   {
-    //     id: "123",
-    //     leader_id: "555",
-    //     status: "waiting",
-    //     created_at: "2026-06-07"
-    //   }
-    // ]
-
     if (rooms && rooms.length > 0) {
-
-      const { count } = await supabase
-        .from("room_players")
-        .select("*", {
-          count: "exact",
-          head: true
-        })
-        .eq("room_id", rooms[0].id);
+      const roomId = rooms[0].id;
+      const count = await countPlayers(roomId);
 
       if (count < 4) {
-
-        roomId = rooms[0].id;
-
-        await supabase
+        const { error: joinErr } = await supabase
           .from("room_players")
-          .insert({
-            room_id: roomId,
-            player_id: userId
-          });
+          .insert({ room_id: roomId, player_id: userId });
+        if (joinErr) throw joinErr;
 
-        if (count + 1 === 4) {
-          await supabase
-            .from("game_rooms")
-            .update({
-              status: "full"
-            })
-            .eq("id", roomId);
+        if (count + 1 >= 4) {
+          await supabase.from("game_rooms").update({ status: "full" }).eq("id", roomId);
         }
 
-      } else {
-
-        isLeader = true;
-        roomId = await createRoom(userId);
-
+        return res.json({ roomId, isLeader: false, playerCount: count + 1 });
       }
-
-    } else {
-
-      isLeader = true;
-      roomId = await createRoom(userId);
-
     }
 
-    const { count } = await supabase
-      .from("room_players")
-      .select("*", {
-        count: "exact",
-        head: true
-      })
-      .eq("room_id", roomId);
-
-    res.json({
-      roomId,
-      isLeader,
-      playerCount: count || 1
-    });
-
+    // 3. ไม่มีห้องว่าง → สร้างใหม่
+    const roomId = await createRoom(userId);
+    return res.json({ roomId, isLeader: true, playerCount: 1 });
   } catch (error) {
-
     console.error("Find match error:", error);
-
-    res.status(500).json({
-      error: "Internal Server Error"
-    });
-
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -200,7 +175,7 @@ router.delete("/leave", requireAuth, async (req, res) => {
         .eq("room_id", roomId)
         .eq("player_id", userId);
 
-      if (room.status === "full") {
+      if (room?.status === "full") {
 
         await supabase
           .from("game_rooms")
