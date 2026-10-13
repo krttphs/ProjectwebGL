@@ -1,3 +1,8 @@
+/* ==========================================================
+   LANDING PAGE
+   ========================================================== */
+
+/* ---------- Base ---------- */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -20,15 +25,13 @@ body {
     overflow-x: hidden;
 }
 
+/* ---------- Header ---------- */
 .landing-header {
     position: relative;
     z-index: 10;
-
     width: min(1180px, 90%);
     margin: 0 auto;
-
     padding: 30px 0;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -38,7 +41,6 @@ body {
     font-size: 24px;
     font-weight: 900;
     letter-spacing: 2px;
-
     color: #ffffff;
 }
 
@@ -51,11 +53,9 @@ body {
 .landing-nav a {
     color: #ffffff;
     text-decoration: none;
-
     font-size: 13px;
     font-weight: bold;
     letter-spacing: 1px;
-
     transition: 0.2s;
 }
 
@@ -80,6 +80,7 @@ body {
     color: #111111;
 }
 
+/* ---------- Hero ---------- */
 .hero {
     position: relative;
     z-index: 2;
@@ -90,15 +91,13 @@ body {
     grid-template-columns: 1fr 1fr;
     border: 1px solid #ffffff;
     border-radius: 20px;
-     overflow: hidden;
+    overflow: hidden;
     background: rgba(5, 10, 17, 0.93);
-    box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
 }
 
 .hero-cloud {
-    position: 
-    absolute;
+    position: absolute;
     width: 180px;
     height: 60px;
     background: #d8f3f8;
@@ -176,8 +175,7 @@ body {
     border-radius: 50%;
     background: #cce34a;
     font-size: 145px;
-    box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
 }
 
 .welcome-text {
@@ -218,7 +216,7 @@ body {
     color: #cce34a;
 }
 
-.hero-right>p {
+.hero-right > p {
     color: #c7c7c7;
     font-size: 17px;
     line-height: 1.7;
@@ -262,6 +260,7 @@ body {
     transform: translateY(-3px);
 }
 
+/* ---------- Section Title ---------- */
 .section-title {
     width: min(1180px, 90%);
     margin: 0 auto 35px;
@@ -290,6 +289,7 @@ body {
     line-height: 1.6;
 }
 
+/* ---------- About ---------- */
 .about-section {
     position: relative;
     z-index: 2;
@@ -328,6 +328,7 @@ body {
     font-size: 14px;
 }
 
+/* ---------- How To Play ---------- */
 .how-to-play {
     position: relative;
     z-index: 2;
@@ -414,6 +415,7 @@ body {
     font-size: 14px;
 }
 
+/* ---------- Game Modes ---------- */
 .game-modes-section {
     position: relative;
     z-index: 2;
@@ -475,6 +477,7 @@ body {
     border-color: #ffb20f;
 }
 
+/* ---------- Developer Life ---------- */
 .developer-life-section {
     position: relative;
     z-index: 2;
@@ -513,6 +516,7 @@ body {
     line-height: 1.6;
 }
 
+/* ---------- Quest ---------- */
 .quest-section {
     position: relative;
     z-index: 2;
@@ -521,34 +525,43 @@ body {
 }
 
 .quest-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 25px;
-    align-items: center;
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
-.quest-text>span {
+.quest-text {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.quest-text > span {
+    display: block;
+    font-size: 20px;
     color: #cce34a;
-    font-size: 13px;
-    font-weight: bold;
-    letter-spacing: 2px;
 }
 
 .quest-text h2 {
     color: #ffffff;
-    font-size: 42px;
+    font-size: clamp(34px, 4vw, 48px);
+    line-height: 1.3;
     margin: 15px 0;
+    text-align: center;
 }
 
-.quest-text>p {
-    color: #bdbdbd;
-    line-height: 1.7;
+.quest-text > p {
+    font-size: 20px;
+    line-height: 1.8;
     margin-bottom: 25px;
+    text-align: center;
 }
 
 .reward-list {
     display: flex;
     flex-direction: column;
+    width: 100%;
     gap: 10px;
 }
 
@@ -556,19 +569,24 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px;
+    gap: 12px;
+    width: 100%;
+    min-height: 70px;
+    padding: 18px 22px;
     border: 1px solid #ffffff;
     border-radius: 10px;
     background: rgba(5, 10, 17, 0.8);
+    text-align: left;
 }
 
 .reward-item strong {
     color: #cce34a;
+    font-size: 20px;
 }
 
 .reward-item span {
     color: #d7d7d7;
-    font-size: 13px;
+    font-size: 20px;
 }
 
 .quest-box {
@@ -616,6 +634,7 @@ body {
     letter-spacing: 1px;
 }
 
+/* ---------- Compete ---------- */
 .compete-section {
     position: relative;
     z-index: 2;
@@ -648,6 +667,7 @@ body {
     line-height: 1.6;
 }
 
+/* ---------- Final CTA ---------- */
 .final-cta {
     position: relative;
     z-index: 2;
@@ -660,7 +680,7 @@ body {
     background: rgba(5, 10, 17, 0.93);
 }
 
-.final-cta-content>span {
+.final-cta-content > span {
     color: #cce34a;
     font-size: 13px;
     font-weight: bold;
@@ -698,6 +718,7 @@ body {
     transform: translateY(-3px);
 }
 
+/* ---------- Footer ---------- */
 .landing-footer {
     position: relative;
     z-index: 2;
@@ -737,6 +758,9 @@ body {
     color: rgba(255, 255, 255, 0.6);
 }
 
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
 @media (max-width: 900px) {
     .landing-header {
         width: 90%;
@@ -767,14 +791,9 @@ body {
     .life-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-
-    .quest-content {
-        grid-template-columns: 1fr;
-    }
 }
 
 @media (max-width: 600px) {
-
     .landing-header {
         padding: 20px 0;
         flex-wrap: wrap;
@@ -835,24 +854,27 @@ body {
         font-size: 30px;
     }
 
-    .how-to-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .game-mode-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .life-grid {
-        grid-template-columns: 1fr;
-    }
-
+    .how-to-grid,
+    .game-mode-grid,
+    .life-grid,
     .compete-grid {
         grid-template-columns: 1fr;
     }
 
-    .quest-text h2 {
-        font-size: 34px;
+    .quest-section {
+        width: calc(100% - 32px);
+    }
+
+    .quest-text > p {
+        font-size: 16px;
+    }
+
+    .reward-item {
+        flex-wrap: wrap;
+    }
+
+    .reward-item span {
+        font-size: 15px;
     }
 
     .landing-footer {
