@@ -1,32 +1,40 @@
 //userId เรา ที่ server ส่งมาให้
 let MY_USER_ID;
+
+// แปลงอักขระพิเศษให้เป็นตัวหนังสือธรรมดา กันข้อมูลจากผู้ใช้กลายเป็น HTML/สคริปต์
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[c]);
+}
+
 async function fetchProfile() {
-    try {
-        const response = await fetch("/api/user/profile");
+  try {
+    const response = await fetch("/api/user/profile");
 
-        if (!response.ok) {
-            throw new Error("โหลด Profile ไม่สำเร็จ");
-        }
-
-        const data = await response.json();
-
-        document.getElementById("username").textContent =
-            data.username || "Unknown";
-
-        document.getElementById("profileBio").textContent =
-            data.bio || "";
-
-        const profileImage =
-            document.getElementById("profileImage");
-
-        if (data.profile_image) {
-            profileImage.src =
-                data.profile_image + "?t=" + Date.now();
-        }
-
-    } catch (error) {
-        console.error("Error loading profile:", error);
+    if (!response.ok) {
+      throw new Error("โหลด Profile ไม่สำเร็จ");
     }
+
+    const data = await response.json();
+
+    document.getElementById("username").textContent =
+      data.username || "Unknown";
+
+    document.getElementById("profileBio").textContent = data.bio || "";
+
+    const profileImage = document.getElementById("profileImage");
+
+    if (data.profile_image) {
+      profileImage.src = data.profile_image + "?t=" + Date.now();
+    }
+  } catch (error) {
+    console.error("Error loading profile:", error);
+  }
 }
 
 async function fetchUserData() {
@@ -63,7 +71,7 @@ async function logout() {
       alert("logout failed");
     }
   } catch (err) {
-    alert("Error to logout! : ", err);
+    alert("Error to logout! : " + err.message);
   }
 }
 
@@ -89,7 +97,7 @@ function animateValue(obj, start, end, duration) {
   const step = (timestamp) => {
     if (!startTimestamp) startTimestamp = timestamp;
     const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-    obj.innerHTML = Math.floor(progress * (end - start) + start);
+    obj.textContent = Math.floor(progress * (end - start) + start);
     if (progress < 1) {
       requestAnimationFrame(step);
     }
@@ -172,17 +180,11 @@ function switchTab(tabName) {
     document.getElementById(`content-${t}`).classList.add("hidden");
     const btn = document.getElementById(`tab-${t}`);
     btn.classList.remove("bg-cyan-600", "text-white", "shadow-lg");
-    btn.classList.add(
-      "text-gray-400",
-      "hover:text-white",
-      "hover:bg-white/10",
-    );
+    btn.classList.add("text-gray-400", "hover:text-white", "hover:bg-white/10");
   });
 
   // Activate selected
-  document
-    .getElementById(`content-${tabName}`)
-    .classList.remove("hidden");
+  document.getElementById(`content-${tabName}`).classList.remove("hidden");
   const activeBtn = document.getElementById(`tab-${tabName}`);
   activeBtn.classList.remove(
     "text-gray-400",
@@ -239,18 +241,18 @@ async function loadFriendRequests() {
             <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center font-bold text-white shadow-md">
-                        ${req.username.charAt(0).toUpperCase()}
+                        ${escapeHtml(req.username.charAt(0).toUpperCase())}
                     </div>
                     <div>
-                        <div class="font-bold text-white">${req.username}</div>
+                        <div class="font-bold text-white">${escapeHtml(req.username)}</div>
                         <div class="text-xs text-gray-400">Wants to be your friend</div>
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="acceptRequest('${req.id}')" class="w-8 h-8 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-white transition-all flex items-center justify-center border border-green-500/30">
+                    <button data-accept-id="${escapeHtml(req.id)}" class="accept-btn w-8 h-8 rounded-full bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-white transition-all flex items-center justify-center border border-green-500/30">
                         <i class="fa-solid fa-check"></i>
                     </button>
-                    <button onclick="rejectRequest('${req.id}')" class="w-8 h-8 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center border border-red-500/30">
+                    <button data-reject-id="${escapeHtml(req.id)}" class="reject-btn w-8 h-8 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center border border-red-500/30">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
@@ -258,6 +260,13 @@ async function loadFriendRequests() {
         `,
       )
       .join("");
+
+    container.querySelectorAll(".accept-btn").forEach((btn) => {
+      btn.addEventListener("click", () => acceptRequest(btn.dataset.acceptId));
+    });
+    container.querySelectorAll(".reject-btn").forEach((btn) => {
+      btn.addEventListener("click", () => rejectRequest(btn.dataset.rejectId));
+    });
   } catch (err) {
     console.error(err);
     container.innerHTML =
@@ -284,10 +293,10 @@ async function loadMyFriends() {
             <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10 hover:border-cyan-500/30 transition-all">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center font-bold text-white shadow-md">
-                        ${friend.username.charAt(0).toUpperCase()}
+                        ${escapeHtml(friend.username.charAt(0).toUpperCase())}
                     </div>
                     <div>
-                        <div class="font-bold text-white">${friend.username}</div>
+                        <div class="font-bold text-white">${escapeHtml(friend.username)}</div>
                         <div class="text-xs text-green-400 flex items-center gap-1">
                             <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> Online
                         </div>
@@ -297,7 +306,7 @@ async function loadMyFriends() {
                 <button class="text-xs bg-white/10 px-3 py-1 rounded-full text-gray-300 hover:bg-white/20">
                     Profile
                 </button>
-                <button onclick="openChatWithFriend('${friend.id}', '${friend.username}')" class="text-xs bg-white/10 px-3 py-1 rounded-full text-gray-300 hover:bg-white/20">
+                <button data-chat-id="${escapeHtml(friend.id)}" data-chat-name="${escapeHtml(friend.username)}" class="chat-btn text-xs bg-white/10 px-3 py-1 rounded-full text-gray-300 hover:bg-white/20">
                     Chat <i class="fas fa-comment-dots"></i>
                 </button>
                 </div>
@@ -305,6 +314,13 @@ async function loadMyFriends() {
         `,
       )
       .join("");
+
+    // ผูกปุ่ม Chat ทีหลัง แทนการใส่ username ลงใน onclick ตรงๆ
+    container.querySelectorAll(".chat-btn").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        openChatWithFriend(btn.dataset.chatId, btn.dataset.chatName),
+      );
+    });
   } catch (err) {
     console.error(err);
   }
@@ -339,25 +355,30 @@ async function searchUsers() {
             <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl border border-white/10">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold border border-gray-600">
-                        ${user.username.charAt(0).toUpperCase()}
+                        ${escapeHtml(user.username.charAt(0).toUpperCase())}
                     </div>
-                    <span class="text-white font-bold text-sm">${user.username}</span>
+                    <span class="text-white font-bold text-sm">${escapeHtml(user.username)}</span>
                 </div>
-                ${user.isFriend
-            ? '<span class="text-xs text-gray-400">Already Friends</span>'
-            : user.isPending
-              ? '<span class="text-xs text-yellow-400">Request Sent</span>'
-              : `<button onclick="sendRequest('${user.id}')" class="text-xs bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-lg border border-cyan-600/50 hover:bg-cyan-600 hover:text-white transition-all">
+                ${
+                  user.isFriend
+                    ? '<span class="text-xs text-gray-400">Already Friends</span>'
+                    : user.isPending
+                      ? '<span class="text-xs text-yellow-400">Request Sent</span>'
+                      : `<button data-add-id="${escapeHtml(user.id)}" class="add-btn text-xs bg-cyan-600/20 text-cyan-400 px-3 py-1 rounded-lg border border-cyan-600/50 hover:bg-cyan-600 hover:text-white transition-all">
                         Add +
                     </button>`
-          }
+                }
             </div>
         `,
       )
       .join("");
+
+    container.querySelectorAll(".add-btn").forEach((btn) => {
+      btn.addEventListener("click", () => sendRequest(btn.dataset.addId));
+    });
   } catch (err) {
     console.error(err);
-    container.innerHTML = "Error searching.";
+    container.textContent = "Error searching.";
   }
 }
 
@@ -414,13 +435,11 @@ async function openChat(roomId, friendName) {
 
   // แสดง popup
   document.getElementById("chatWindow").classList.remove("hidden");
-  document.getElementById("ChatFriendName").innerText = friendName;
+  document.getElementById("ChatFriendName").textContent = friendName;
 
   // โหลดข้อความเก่า
   const res = await fetch(`/api/chat/${roomId}/messages`);
   const messages = await res.json();
-
-  console.log("CHAT HISTORY:", messages);
 
   renderMessages(messages);
 
@@ -482,7 +501,7 @@ function subscribeChatRealtime(roomId) {
 //แสดงข้อความเก่า
 function renderMessages(messages) {
   const box = document.getElementById("chatMessages");
-  box.innerHTML = "";
+  box.textContent = "";
 
   messages.forEach((msg) => {
     appendMessage(msg);
@@ -496,22 +515,19 @@ function appendMessage(msg) {
   const box = document.getElementById("chatMessages");
 
   const div = document.createElement("div");
-  div.className = "flex";
-  console.log(msg.sender_id);
-  console.log(MY_USER_ID);
-  div.classList.add(
-    msg.sender_id === MY_USER_ID ? "justify-end" : "justify-start",
-  );
+  div.className =
+    "flex " + (msg.sender_id === MY_USER_ID ? "justify-end" : "justify-start");
 
-  div.innerHTML = `
-    <span class="inline-block bg-white/10 text-white px-3 py-1 rounded-lg max-w-[70%]">
-      ${msg.message}
-    </span>
-  `;
+  const span = document.createElement("span");
+  span.className =
+    "inline-block bg-white/10 text-white px-3 py-1 rounded-lg max-w-[70%]";
+  span.textContent = msg.message; // ข้อความจากผู้ใช้ → textContent เสมอ
 
+  div.appendChild(span);
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
+
 let isTheHowToShown = false;
 let waitToOpenOrCloseTheHowToAgain = false;
 function howToPlayGM1() {
@@ -524,13 +540,9 @@ function howToPlayGM1() {
     HowToWindow.classList.add("flex");
     HowToWindow.classList.remove("close-game-menu");
     HowToWindow.classList.add("open-game-menu");
-    document
-      .getElementById("background-darker")
-      .classList.remove("opacity-0");
+    document.getElementById("background-darker").classList.remove("opacity-0");
     setTimeout(() => {
-      document
-        .getElementById("background-darker")
-        .classList.remove("hidden");
+      document.getElementById("background-darker").classList.remove("hidden");
       waitToOpenOrCloseTheHowToAgain = false;
     }, 300);
   } else {
@@ -539,14 +551,9 @@ function howToPlayGM1() {
     HowToWindow.classList.remove("flex");
     HowToWindow.classList.remove("open-game-menu");
     HowToWindow.classList.add("close-game-menu");
-    document
-      .getElementById("background-darker")
-      .classList.add("opacity-0");
+    document.getElementById("background-darker").classList.add("opacity-0");
     setTimeout(
-      () =>
-        document
-          .getElementById("background-darker")
-          .classList.add("hidden"),
+      () => document.getElementById("background-darker").classList.add("hidden"),
       300,
     );
     setTimeout(() => {
@@ -575,7 +582,7 @@ async function findMatch() {
     currentLobbyId = data.roomId;
     isLeader = data.isLeader;
 
-    document.getElementById("playerCountDisplay").innerText =
+    document.getElementById("playerCountDisplay").textContent =
       `Players: ${data.playerCount} / 4`;
 
     const lobbyModal = document.getElementById("lobbyModal");
@@ -584,15 +591,13 @@ async function findMatch() {
 
     if (isLeader) {
       document.getElementById("startGameBtn").classList.remove("hidden");
-      document
-        .getElementById("time_input_area")
-        .classList.remove("hidden");
-      document.getElementById("lobbyStatus").innerText =
+      document.getElementById("time_input_area").classList.remove("hidden");
+      document.getElementById("lobbyStatus").textContent =
         "You are the Room Leader";
     } else {
       document.getElementById("startGameBtn").classList.add("hidden");
       document.getElementById("time_input_area").classList.add("hidden");
-      document.getElementById("lobbyStatus").innerText =
+      document.getElementById("lobbyStatus").textContent =
         "Waiting for Leader to start...";
     }
 
@@ -618,14 +623,11 @@ function subscribeLobbyRealtime(roomId) {
         filter: `id=eq.${roomId}`,
       },
       (payload) => {
-        // เมื่อ Leader สั่งเปลี่ยนสถานะห้องเป็น 'playing'
-        if (
-          payload.new.status === "loading" &&
-          payload.eventType === "UPDATE"
-        ) {
+        // เมื่อ Leader สั่งเปลี่ยนสถานะห้องเป็น 'loading'
+        if (payload.new.status === "loading" && payload.eventType === "UPDATE") {
           // ย้ายผู้เล่นทุกคนที่อยู่ในห้องนี้ไปหน้า gamemode1
           // แนบ roomId ไปด้วย เพื่อให้ Unity หรือหน้า gamemode1 รู้ว่าเล่นอยู่ห้องไหน
-          window.location.href = `/gamemode1?roomId=${roomId}`;
+          window.location.href = `/gamemode1?roomId=${encodeURIComponent(roomId)}`;
         }
         if (payload.eventType === "DELETE") {
           alert("ห้องถูกยุบแล้ว.");
@@ -641,12 +643,12 @@ function subscribeLobbyRealtime(roomId) {
         table: "room_players",
         filter: `room_id=eq.${roomId}`,
       },
-      async (payload) => {
+      async () => {
         // เมื่อมีคนเข้าหรือออก ยิง API ไปอัปเดตตัวเลขใหม่ทันที
         try {
           const res = await fetch(`/api/lobby/${roomId}/players`);
           const data = await res.json();
-          document.getElementById("playerCountDisplay").innerText =
+          document.getElementById("playerCountDisplay").textContent =
             `Players: ${data.count} / 4`;
         } catch (err) {
           console.error("Failed to fetch player count", err);
@@ -660,11 +662,9 @@ function subscribeLobbyRealtime(roomId) {
 async function startGameLobby() {
   if (!currentLobbyId || !isLeader) return;
   try {
-    let morning =
-      parseInt(document.getElementById("time_morning").value) || 300;
+    let morning = parseInt(document.getElementById("time_morning").value) || 300;
     let noon = parseInt(document.getElementById("time_noon").value) || 60;
-    let evening =
-      parseInt(document.getElementById("time_evening").value) || 300;
+    let evening = parseInt(document.getElementById("time_evening").value) || 300;
 
     const res = await fetch("/api/lobby/start", {
       method: "POST",

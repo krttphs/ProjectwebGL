@@ -3,24 +3,28 @@ const router = express.Router();
 const supabase = require("../config/supabaseClient");
 const { requireAuth } = require("../middleware/authMiddleware");
 
-router.post("/updatePlayerScore", requireAuth, async (req, res) => {
-  try {
-    const roomId = req.body.roomId;
-    const userId = req.user.id;
-    const newScore = req.body.score;
+function normalize(s) {
+  return (s || "")
+    .replace(/\r\n/g, "\n") // Windows newline → ปกติ
+    .split("\n")
+    .map((line) => line.trimEnd()) // ตัดช่องว่างท้ายบรรทัด
+    .join("\n")
+    .trim(); // ตัดบรรทัดว่างหัว-ท้าย
+}
 
-    await supabase
-      .from("room_players")
-      .update({ score: newScore })
-      .eq("room_id", roomId)
-      .eq("player_id", userId);
+const SCORE_CORRECT = 50;
+const SCORE_WRONG = -25;
 
-    res.json({ success: true });
-  } catch (err) {
-    console.error("update score err: ", err);
-    res.status(500).json({ success: false, error: "Server error" });
-  }
-});
+async function finishQuest(roomId, playerId, questId, delta) {
+  const { data, error } = await supabase.rpc("finish_quest", {
+    p_room_id: roomId,
+    p_player_id: playerId,
+    p_quest_id: questId,
+    p_delta: delta,
+  });
+  if (error) throw error;
+  return data; // คะแนนใหม่ หรือ null ถ้าส่งไปแล้ว
+}
 
 router.get("/room/:roomId", requireAuth, async (req, res) => {
   try {
@@ -153,14 +157,39 @@ router.post("/quests/random", requireAuth, async (req, res) => {
       .status(404)
       .json({ message: "ไม่พบโจทย์ในระดับความยาก: " + randomLevel });
   }
-  const { error: error_update } = await supabase
+  const { data: updated, error: error_update } = await supabase
     .from("room_players")
     .update({ current_quest_id: data[0].id })
     .eq("room_id", roomId)
-    .eq("player_id", req.user.id);
+    .eq("player_id", req.user.id)
+    .is("current_quest_id", null)   // สุ่มได้เฉพาะตอนไม่มีโจทย์ค้าง
+    .select("player_id");
   if (error_update)
     return res.status(500).json({ error: error_update.message });
-  res.json(data[0]);
+  if (!updated || updated.length === 0)
+    return res.status(409).json({ error: "มีโจทย์ค้างอยู่ ต้องส่งหรือยอมแพ้ก่อน" });
+  const {
+    id,
+    title,
+    description,
+    show_expect_output,
+    input_run,
+    level,
+    setup_code_python,
+    setup_code_js,
+    setup_code_java,
+  } = data[0];
+  return res.json({
+    id,
+    title,
+    description,
+    show_expect_output,
+    input_run,
+    level,
+    setup_code_python,
+    setup_code_js,
+    setup_code_java,
+  });
 });
 
 router.patch("/mycomputer", requireAuth, async (req, res) => {
@@ -175,6 +204,7 @@ router.patch("/mycomputer", requireAuth, async (req, res) => {
     if (data && data.computer_id) {
       return res.json({ computer_id: data.computer_id });
     }
+    if (find_error) throw find_error;
     const { data: takenComputer } = await supabase
       .from("room_players")
       .select("player_id")
@@ -192,16 +222,14 @@ router.patch("/mycomputer", requireAuth, async (req, res) => {
       .update({ computer_id: myComputer_id })
       .eq("room_id", roomId)
       .eq("player_id", req.user.id);
-
+    if (error) throw error;
     res.json({ computer_id: myComputer_id });
   } catch (error) {
     console.error("Update computer id error: ", error);
-    res
-      .status(500)
-      .json({
-        message: "ไม่สามารถบันทึกหมายเลขเครื่องได้: ",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "ไม่สามารถบันทึกหมายเลขเครื่องได้: ",
+      error: error.message,
+    });
   }
 });
 
@@ -221,20 +249,25 @@ router.get("/mycomputer/:roomId", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/currentQuest", requireAuth, async (req, res) => {
+router.post("/giveup", requireAuth, async (req, res) => {
   try {
     const { roomId } = req.body;
-    const { error } = await supabase
+    const { data: me, error } = await supabase
       .from("room_players")
-      .update({
-        current_quest_id: null,
-        code_part_2: null,
-        code_part_3: null,
-      })
+      .select("current_quest_id")
       .eq("room_id", roomId)
-      .eq("player_id", req.user.id);
+      .eq("player_id", req.user.id)
+      .single();
     if (error) throw error;
-    res.json({ success: true });
+    if (!me?.current_quest_id) {
+      return res.status(400).json({ error: "ไม่มีโจทย์ให้ยอมแพ้" });
+    }
+
+    const score = await finishQuest(roomId, req.user.id, me.current_quest_id, SCORE_WRONG);
+    if (score === null) {
+      return res.status(409).json({ error: "โจทย์นี้จบไปแล้ว" });
+    }
+    res.json({ score });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -253,7 +286,9 @@ router.get("/computerCode/:roomId/:comId", requireAuth, async (req, res) => {
     if (data && data.current_quest_id) {
       const { data: questData, error: questError } = await supabase
         .from("quests")
-        .select("*")
+        .select(
+          "id, title, description, show_expect_output, input_run, level, setup_code_python, setup_code_js, setup_code_java",
+        )
         .eq("id", data.current_quest_id)
         .single();
       if (questError) throw questError;
@@ -294,18 +329,105 @@ router.patch("/updateProgress", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/languages",async (req,res) =>{
-  try{
-    const {data,error} = await supabase.from("languages").select("name, judge0_id")
-    if(error){
-      throw error
+router.get("/languages", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("languages")
+      .select("name, judge0_id");
+    if (error) {
+      throw error;
     }
-    if(data){
-      res.json(data || [])
+    if (data) {
+      res.json(data || []);
     }
-  } catch(error){
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
-})
+});
+
+router.post("/submissions", requireAuth, async (req, res) => {
+  const { source_code, language_id, roomId, computerId, type } = req.body;
+  if (!["62", "63", "71"].includes(String(language_id)))
+    return res.status(400).json({ error: "unsupported language" });
+  if (typeof source_code !== "string" || !roomId || !computerId) {
+    return res.status(400).json({ error: "ข้อมูลไม่ครบ" });
+  }
+  try {
+    // 1. หาโจทย์จากเครื่อง (เพื่อนจะได้กดรันได้ด้วย)
+    const { data: owner, error: ownerErr } = await supabase
+      .from("room_players")
+      .select("player_id, current_quest_id")
+      .eq("room_id", roomId)
+      .eq("computer_id", computerId)
+      .single();
+    if (ownerErr || !owner?.current_quest_id) {
+      return res.status(400).json({ error: "เครื่องนี้ยังไม่มีโจทย์" });
+    }
+
+    // 2. Submit ได้เฉพาะเจ้าของเครื่อง
+    if (type === "submit" && owner.player_id !== req.user.id) {
+      return res.status(403).json({ error: "ส่งได้เฉพาะเจ้าของเครื่อง" });
+    }
+
+    const sendSubmitResult = async (success, status) => {
+      const score = await finishQuest(
+        roomId,
+        req.user.id,
+        owner.current_quest_id,
+        success ? SCORE_CORRECT : SCORE_WRONG,
+      );
+      if (score === null) {
+        return res.status(409).json({ error: "โจทย์นี้ถูกส่งไปแล้ว" });
+      }
+      return res.json({ success, status, score });
+    };
+
+    // 3. ดึง input / คำตอบจาก DB
+    const { data: quest, error: questErr } = await supabase
+      .from("quests")
+      .select("input_run, input_submit, expected_output")
+      .eq("id", owner.current_quest_id)
+      .single();
+    if (questErr) throw questErr;
+
+    // 4. ส่งไปให้ judge service รัน
+    const stdin = type === "submit" ? quest.input_submit : quest.input_run;
+    const judgeRes = await fetch(`${process.env.JUDGE_URL}/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-judge-secret": process.env.JUDGE_SECRET,
+      },
+      body: JSON.stringify({ source_code, language_id, stdin: stdin ?? "" }),
+      signal: AbortSignal.timeout(90_000), // เผื่อ judge ตื่นจากหลับ
+    });
+    if (!judgeRes.ok) throw new Error("judge error " + judgeRes.status);
+    const r = await judgeRes.json();
+
+    // 5. คอมไพล์ไม่ผ่าน
+    if (r.status.id === 6) {
+      if (type === "submit") return sendSubmitResult(false, r.status);
+      return res.json(r);
+    }
+
+    // 6. Submit → เทียบคำตอบที่ backend หลัก
+    if (type === "submit") {
+      const success =
+        r.status.id === 3 &&
+        normalize(r.stdout) === normalize(quest.expected_output);
+      return sendSubmitResult(success, r.status);
+    }
+
+    return res.json({
+      stdout: r.stdout,
+      stderr: r.stderr,
+      time: r.time,
+      status: r.status,
+    });
+  } catch (error) {
+    console.error("submission error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router;

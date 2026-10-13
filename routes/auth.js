@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const supabase = require("../config/supabaseClient");
+const { supabaseAuth } = require("../config/supabaseClient");
 const {requireAuth,hasAuth} = require("../middleware/authMiddleware");
 
 // Route Register
@@ -36,7 +37,7 @@ router.post("/register",hasAuth, async (req, res) => {
 
   if (checkError_email) return res.status(500).json({ error: "Database error" });
 
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await supabaseAuth.auth.signUp({
     email: tempEmail,
     password: tempPassword,
   });
@@ -65,15 +66,17 @@ router.post("/register",hasAuth, async (req, res) => {
 router.post("/login", hasAuth,async (req, res) => {
   const { email, password } = req.body;
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabaseAuth.auth.signInWithPassword({
     email: email,
     password: password,
   });
 
   if (error) return res.status(401).json({ error: error.message });
   res.cookie("token", data.session.access_token, {
-    httpOnly: true, // httpOnly: true แปลว่า JavaScript ฝั่ง Client จะแอบอ่านไม่ได้
-    maxAge: 60 * 60 * 1000, // maxAge: อายุของ Cookie
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // ส่งผ่าน HTTPS เท่านั้น
+    sameSite: "lax",                               // กันเว็บอื่นยิง request แทนผู้เล่น
+    maxAge: 60 * 60 * 1000,
   });
 
   res.json({ message: "เข้าสู่ระบบสำเร็จ", user: data.user });

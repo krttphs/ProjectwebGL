@@ -157,19 +157,9 @@ window.OnBallSubmitted = function (ballName) {
 };
 
 let myScore = 0;
-async function updateScore(newScore) {
-  myScore += newScore;
-  const scoreNumber = document.getElementById("score-number");
-  scoreNumber.textContent = myScore;
-  try {
-    await fetch("/api/game/updatePlayerScore", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId: currentRoomId, score: myScore }),
-    });
-  } catch (err) {
-    console.error("error message: ", err);
-  }
+function setScoreUI(score) {
+  myScore = score;
+  document.getElementById("score-number").textContent = score;
 }
 // -------- Judge0 --------
 const runBtn = document.getElementById("runBtn");
@@ -198,14 +188,16 @@ runBtn.addEventListener("click", async () => {
 
   try {
     let res = await fetch(
-      "https://ce.judge0.com/submissions/?base64_encoded=false&wait=true",
+      "/api/game/submissions",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source_code: finalCode,
           language_id: lang,
-          stdin: currentQuest.input_run,
+          roomId: currentRoomId,
+          computerId: currentObjectId,
+          type:"run",
         }),
       },
     );
@@ -218,22 +210,25 @@ runBtn.addEventListener("click", async () => {
         result.stdout +
         "\nเวลาที่ใช้: " +
         result.time +
-        " วินาที" +
-        "\nmomory ที่ใช้: " +
-        result.memory +
-        "KB";
-    } else if (result.stderr) output.textContent = "Error:\n" + result.stderr;
-    else if (result.compile_output)
+        " วินาที"
+    }
+    if (!res.ok) {
+      output.textContent = "⚠️ " + (result.error || "รันไม่สำเร็จ");
+    } else if (result.status?.id === 6) {
       output.textContent = "Compile Error:\n" + result.compile_output;
-    else output.textContent = "⚠️ ไม่พบ output";
+    } else if (result.status?.id === 5) {
+      output.textContent = "⏱️ เกินเวลา (Time Limit Exceeded)";
+    } else if (result.status?.id !== 3) {
+      output.textContent = "Error:\n" + (result.stderr || result.status?.description);
+    } else {
+      output.textContent =
+        (result.stdout || "(ไม่มี output)") + "\nเวลาที่ใช้: " + result.time + " วินาที";
+    }
   } catch (err) {
     clearInterval(timeout);
     output.textContent = "เกิดข้อผิดพลาด: " + err.message;
   }
 });
-function normalize(str) {
-  return str.replace(/\r\n/g, "\n").trim();
-}
 //ส่ง Submit เข้า Unity
 const submitBtn = document.getElementById("submitBtn");
 let submitTimeout = null;
@@ -259,71 +254,38 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
   const finalCode = `${part1}\n${part2}\n${part3}`;
 
   try {
-    let res = await fetch(
-      "https://ce.judge0.com/submissions/?base64_encoded=false&wait=true",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          source_code: finalCode,
-          language_id: lang,
-          stdin: currentQuest.input_submit, //ใช้ inputSubmit จากโจทย์
-        }),
-      },
-    );
-
+    let res = await fetch("/api/game/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source_code: finalCode,
+        language_id: lang,
+        roomId: currentRoomId,
+        computerId: currentObjectId,
+        type: "submit",
+      }),
+    });
     let result = await res.json();
     clearInterval(submitTimeout);
 
-    if (result.stdout) {
-      isGetATask = false;
-      await fetch("/api/game/currentQuest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          roomId: currentRoomId,
-        }),
-      });
-      if (
-        normalize(result.stdout) === normalize(currentQuest.expected_output)
-      ) {
-        //เทียบกับ expectedOutput
-        output.textContent = "เสร็จสิ้น！";
-        // "ถูกต้อง!! ✅" +
-        // "\nเวลาที่ใช้: " +
-        // result.time +
-        // " วินาที" +
-        // "\nmemory ที่ใช้: " +
-        // result.memory +
-        // "KB" +
-        // "\nรางวัล: " +
-        // currentQuest.rewards +
-        // "\nได้คะแนน: 50";
-        if (unityInstance) {
-          unityInstance.SendMessage(
-            "GameManager",
-            "SpawnResultBall",
-            "correct",
-          );
-        }
-        updateScore(50);
-      } else {
-        output.textContent = "เสร็จสิ้น！";
-        unityInstance.SendMessage("GameManager", "SpawnResultBall", "wrong");
-        updateScore(-25);
-      }
-      if (unityInstance && currentObjectId) {
-        console.log("บอก unity ว่าจบ task แล้วที่ :", currentObjectId);
+    if (!res.ok) {
+      output.textContent = "⚠️ " + (result.error || "ส่งไม่สำเร็จ");
+      return;
+    }
+
+    isGetATask = false;
+    setScoreUI(result.score);
+    output.textContent = "เสร็จสิ้น！";
+
+    if (unityInstance) {
+      unityInstance.SendMessage(
+        "GameManager",
+        "SpawnResultBall",
+        result.success ? "correct" : "wrong",
+      );
+      if (currentObjectId) {
         unityInstance.SendMessage(currentObjectId, "UpdateHavingTask", "false");
-      } else {
-        console.warn("❌ ไม่มี objectId หรือ unityInstance", currentObjectId);
       }
-    } else if (result.stderr) {
-      output.textContent = "Error:\n" + result.stderr;
-    } else if (result.compile_output) {
-      output.textContent = "Compile Error:\n" + result.compile_output;
-    } else {
-      output.textContent = "⚠️ ไม่พบ output";
     }
   } catch (err) {
     clearInterval(submitTimeout);
@@ -552,7 +514,7 @@ window.ShowCodeEditor = async function (dataString) {
         output.textContent = "สุ่มได้โจทย์: " + currentQuest.title + "\n";
         output.textContent += "Input ที่ใช้: " + currentQuest.input_run + "\n";
         output.textContent +=
-          "ผลลัพธ์ที่ต้องการ:\n" + currentQuest.expected_output;
+          "ผลลัพธ์ที่ต้องการ:\n" + currentQuest.show_expect_output;
         document.getElementById("code-part1").value =
           currentQuest.setup_code_java; //ต้องแก้
         document.getElementById("code-part2").value =
@@ -698,22 +660,23 @@ async function subscribeGameStatus(roomId) {
 let countdownInterval;
 
 async function giveUp() {
-  updateScore(-25);
-  isGetATask = false;
-  await fetch("/api/game/currentQuest", {
+  const res = await fetch("/api/game/giveup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      roomId: currentRoomId,
-    }),
+    body: JSON.stringify({ roomId: currentRoomId }),
   });
+  const result = await res.json();
+  if (!res.ok) {
+    console.warn("giveUp:", result.error);
+    return;
+  }
+
+  isGetATask = false;
+  setScoreUI(result.score);
   if (unityInstance) {
     unityInstance.SendMessage("GameManager", "SpawnResultBall", "wrong");
     if (currentObjectId) {
-      console.log("บอก unity ว่าจบ task แล้วที่ :", currentObjectId);
       unityInstance.SendMessage(currentObjectId, "UpdateHavingTask", "false");
-    } else {
-      console.warn("❌ ไม่มี objectId หรือ unityInstance", currentObjectId);
     }
   }
 }
