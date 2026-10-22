@@ -95,8 +95,8 @@
 
                     <button
                         class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
-                        onclick="findMatch()">
-                        <span>Find Match</span>
+                        onclick="openRoomBrowser()">
+                        <span>Play</span>
                         <i class="fa-solid fa-play"></i>
                     </button>
                 </div>
@@ -307,6 +307,45 @@
                 </button>
             </div>
         </div>
+        <!-- Room Browser: เลือก/สร้างห้อง ก่อนเข้า WebGL -->
+        <div id="roomBrowserModal"
+            class="hidden fixed inset-0 z-[90] bg-black/80 flex justify-center items-center opacity-0 transition-opacity duration-300">
+            <div class="glass-panel w-[92vw] max-w-[560px] max-h-[85vh] rounded-3xl p-6 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-white">
+                        <i class="fa-solid fa-door-open text-cyan-400 mr-2"></i> ROOMS
+                    </h2>
+                    <div class="flex items-center gap-3">
+                        <span id="roomQuotaDisplay" class="text-sm text-gray-300">- / 5 rooms</span>
+                        <button onclick="loadRooms()" title="Refresh"
+                            class="w-9 h-9 rounded-full bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white transition-all cursor-pointer">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <button onclick="closeRoomBrowser()" title="Close"
+                            class="w-9 h-9 rounded-full bg-white/10 text-gray-300 hover:bg-red-500 hover:text-white transition-all cursor-pointer">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="roomListError" class="hidden text-red-400 text-sm mb-3"></div>
+
+                <div id="roomList" class="flex-1 overflow-y-auto flex flex-col gap-2 min-h-[200px] pr-1">
+                    <div class="text-center text-gray-500 mt-16">Loading rooms...</div>
+                </div>
+
+                <div class="flex gap-3 mt-4">
+                    <button id="createRoomBtn" onclick="createNewRoom()"
+                        class="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-400 rounded-xl font-bold text-white shadow-lg hover:scale-105 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100">
+                        <i class="fa-solid fa-plus mr-1"></i> CREATE ROOM
+                    </button>
+                    <button id="quickMatchBtn" onclick="findMatch()"
+                        class="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg hover:scale-105 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100">
+                        <i class="fa-solid fa-bolt mr-1"></i> QUICK MATCH
+                    </button>
+                </div>
+            </div>
+        </div>
         <div id="lobbyModal"
             class="hidden fixed inset-0 z-[100] bg-black/80 flex justify-center items-center opacity-0 transition-opacity duration-300">
             <div class="glass-panel w-[400px] rounded-3xl p-6 flex flex-col items-center">
@@ -323,22 +362,29 @@
 
                 <div id="time_input_area" class="hidden flex flex-col gap-3 w-full mb-6">
                     <h3 class="text-white font-bold text-left">
-                        ตั้งเวลาการแข่งขัน (วินาที)
+                        ตั้งเวลาการแข่งขัน (Time limit)
                     </h3>
                     <div class="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-white/10">
-                        <label class="text-cyan-300">เช้า (Morning)</label>
-                        <input type="number" id="time_morning" value="300" min="10"
-                            class="w-20 bg-black/50 border border-gray-600 rounded text-center text-white p-1" />
+                        <label for="time_day_minutes" class="text-cyan-300">เวลาต่อวัน</label>
+                        <select id="time_day_minutes"
+                            class="w-28 bg-black/50 border border-gray-600 rounded text-center text-white p-1 cursor-pointer">
+                            <option value="3">3 นาที</option>
+                            <option value="5" selected>5 นาที</option>
+                            <option value="10">10 นาที</option>
+                        </select>
                     </div>
                     <div class="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-white/10">
-                        <label class="text-yellow-300">เที่ยง (Break)</label>
-                        <input type="number" id="time_noon" value="60" min="10"
-                            class="w-20 bg-black/50 border border-gray-600 rounded text-center text-white p-1" />
+                        <label for="time_day_count" class="text-yellow-300">จำนวนวัน</label>
+                        <select id="time_day_count"
+                            class="w-28 bg-black/50 border border-gray-600 rounded text-center text-white p-1 cursor-pointer">
+                            <option value="1" selected>1 วัน</option>
+                            <option value="3">3 วัน</option>
+                            <option value="5">5 วัน</option>
+                            <option value="7">7 วัน</option>
+                        </select>
                     </div>
-                    <div class="flex justify-between items-center bg-black/40 p-2 rounded-lg border border-white/10">
-                        <label class="text-red-300">เย็น (Evening)</label>
-                        <input type="number" id="time_evening" value="300" min="10"
-                            class="w-20 bg-black/50 border border-gray-600 rounded text-center text-white p-1" />
+                    <div id="time_total_display" class="text-sm text-gray-400 text-right">
+                        รวม 5 นาที
                     </div>
                 </div>
                 <button id="startGameBtn" onclick="startGameLobby()"

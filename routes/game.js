@@ -26,11 +26,18 @@ async function finishQuest(roomId, playerId, questId, delta) {
   return data; // คะแนนใหม่ หรือ null ถ้าส่งไปแล้ว
 }
 
+// เวลาทั้งเกม (วินาที) = ความยาว 1 วัน (เช้า+เที่ยง+เย็น) x จำนวนวัน
+function gameDurationSeconds(room) {
+  const dayLength =
+    (room.morning_time || 0) + (room.noon_time || 0) + (room.evening_time || 0);
+  return dayLength * (room.day_count || 1);
+}
+
 router.get("/room/:roomId", requireAuth, async (req, res) => {
   try {
     const { data: room, error } = await supabase
       .from("game_rooms")
-      .select("end_time, morning_time, noon_time, evening_time, status")
+      .select("end_time, morning_time, noon_time, evening_time, day_count, status")
       .eq("id", req.params.roomId)
       .single();
 
@@ -49,7 +56,7 @@ router.post("/endgame/:roomId", requireAuth, async (req, res) => {
 
     const { data: room, error: roomError } = await supabase
       .from("game_rooms")
-      .select("status, end_time, morning_time, noon_time, evening_time")
+      .select("status, end_time, morning_time, noon_time, evening_time, day_count")
       .eq("id", roomId)
       .single();
 
@@ -60,10 +67,7 @@ router.post("/endgame/:roomId", requireAuth, async (req, res) => {
     const isTimeUp = new Date() >= new Date(room.end_time);
 
     if (room.status === "playing" && isTimeUp) {
-      const totalTime =
-        (room.morning_time || 0) +
-        (room.noon_time || 0) +
-        (room.evening_time || 0);
+      const totalTime = gameDurationSeconds(room);
 
       await supabase
         .from("game_rooms")
@@ -105,13 +109,24 @@ router.post("/ready", requireAuth, async (req, res) => {
 
   if (upsertError) return res.status(500).json({ error: upsertError.message });
 
+  try {
+    await tryStartGame(roomId);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+
+  res.json({ success: true });
+});
+
+// ถ้าห้องยัง loading และผู้เล่นที่เหลือ ready ครบ → เริ่มเกม (เรียกตอน ready และตอนมีคนออก)
+async function tryStartGame(roomId) {
   const { data: room, error: roomError } = await supabase
     .from("game_rooms")
-    .select("status, morning_time, noon_time, evening_time")
+    .select("status, morning_time, noon_time, evening_time, day_count")
     .eq("id", roomId)
     .single();
 
-  if (roomError) return res.status(500).json({ error: roomError.message });
+  if (roomError) throw roomError;
 
   const { count: readyCount } = await supabase
     .from("player_ready_status")
@@ -128,20 +143,16 @@ router.post("/ready", requireAuth, async (req, res) => {
   const safeTotal = totalPlayers ?? 0;
 
   if (safeTotal > 0 && safeReady >= safeTotal && room.status === "loading") {
-    const totalSeconds =
-      (room.morning_time || 0) +
-      (room.noon_time || 0) +
-      (room.evening_time || 0);
+    const totalSeconds = gameDurationSeconds(room);
     const timeEnd = new Date(Date.now() + totalSeconds * 1000).toISOString();
 
     await supabase
       .from("game_rooms")
       .update({ status: "playing", end_time: timeEnd })
-      .eq("id", roomId);
+      .eq("id", roomId)
+      .eq("status", "loading");
   }
-
-  res.json({ success: true });
-});
+}
 
 router.post("/quests/random", requireAuth, async (req, res) => {
   const { roomId } = req.body;
@@ -431,3 +442,4 @@ router.post("/submissions", requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.tryStartGame = tryStartGame;

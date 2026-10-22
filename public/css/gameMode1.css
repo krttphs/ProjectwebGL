@@ -87,6 +87,26 @@
         box-shadow: 0 4px 15px rgba(60, 123, 217, 0.4);
       }
 
+      /* --- Leave Game Button (อยู่เหนือ waiting screen ด้วย) --- */
+      #leave-game-btn {
+        position: fixed;
+        bottom: 25px;
+        left: 25px;
+        z-index: 2001;
+        padding: 8px 18px;
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.6);
+        border-radius: 30px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      #leave-game-btn:hover {
+        background: #ef4444;
+        color: white;
+      }
+
       /* --- Inner Elements Styling --- */
       .controls {
         display: flex;

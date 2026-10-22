@@ -20,6 +20,28 @@ document.querySelector("#unity-loading-bar").style.display = "block";
 //ดึง roomId จาก URL (ที่ส่งมาจาก lobby)
 const urlParams = new URLSearchParams(window.location.search);
 const currentRoomId = urlParams.get("roomId");
+
+// heartbeat บอก server ว่ายังอยู่ในเกม (ทุกคนปิดแท็บ → server ปิดห้องให้อัตโนมัติ)
+// เริ่มส่งตั้งแต่ก่อนโหลด Unity เสร็จ เพราะไฟล์เกมใหญ่ โหลดนาน
+function sendHeartbeat(leaving = false) {
+  if (!currentRoomId) return;
+  const body = JSON.stringify({ roomId: currentRoomId, leaving });
+  if (leaving) {
+    navigator.sendBeacon(
+      "/api/lobby/heartbeat",
+      new Blob([body], { type: "application/json" }),
+    );
+    return;
+  }
+  fetch("/api/lobby/heartbeat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  }).catch(() => {});
+}
+sendHeartbeat();
+const heartbeatTimer = setInterval(sendHeartbeat, 5000);
+window.addEventListener("pagehide", () => sendHeartbeat(true));
 var script = document.createElement("script");
 script.src = loaderUrl;
 script.onload = () => {
@@ -135,7 +157,7 @@ function updateProgress(delta) {
   });
 }
 
-// เรียกจากฝั่ง Unity (ผ่าน DeskBallBridge.jslib) ทุกครั้งที่มีคนกด E วางบอลที่โต๊ะ
+// เรียกจากฝั่ง Unity (ผ่าน WebGLBridge.jslib) ทุกครั้งที่มีคนกด E เอาบอลให้ NPC
 // ballName ที่ Unity ส่งมาคือชื่อ Object ของลูกบอล เช่น "GreenBall" หรือ "RedBall"
 window.OnBallSubmitted = function (ballName) {
   console.log("Unity ส่งบอลมาที่เว็บ:", ballName);
@@ -711,12 +733,23 @@ async function startTimer() {
     const res = await fetch(`/api/game/room/${currentRoomId}`);
     if (!res.ok) throw new Error("Fetch time error");
     const roomData = await res.json();
-    if (unityInstance) {
-      const timeString = `${roomData.morning_time},${roomData.noon_time},${roomData.evening_time}`;
-      unityInstance.SendMessage("GameManager", "SetupTime", timeString);
-    }
     //แปลงเป็น Timestamp
     const endTime = new Date(roomData.end_time).getTime();
+
+    if (unityInstance) {
+      // "เช้า,เที่ยง,เย็น,จำนวนวัน,วินาทีที่ผ่านไปแล้ว" (คนที่ join กลางเกมจะได้แสง/วันตรงกับคนอื่น)
+      const dayCount = roomData.day_count || 1;
+      const dayLength =
+        roomData.morning_time + roomData.noon_time + roomData.evening_time;
+      const elapsed = Math.max(
+        0,
+        dayLength * dayCount - (endTime - Date.now()) / 1000,
+      );
+      const timeString =
+        `${roomData.morning_time},${roomData.noon_time},${roomData.evening_time},` +
+        `${dayCount},${elapsed.toFixed(1)}`;
+      unityInstance.SendMessage("GameManager", "SetupTime", timeString);
+    }
 
     countdownInterval = setInterval(() => {
       const now = new Date().getTime();
@@ -727,7 +760,8 @@ async function startTimer() {
         endGame();
       } else {
         // คำนวณนาทีและวินาที
-        let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        // นาทีรวม (เกม 7 วันยาวเกิน 1 ชั่วโมงได้ ไม่ตัดชั่วโมงทิ้ง)
+        let m = Math.floor(distance / (1000 * 60));
         let s = Math.floor((distance % (1000 * 60)) / 1000);
         document.getElementById("timer-display").innerText =
           (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
@@ -853,8 +887,33 @@ function setupCodeSync(roomId, computerId, isMine) {
   part3.oninput = broadcastCode;
 }
 
+// ออกจากเกมกลางคัน → กลับหน้า lobby (คนสุดท้ายออก ห้องจะถูกปิด)
+async function leaveGame() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (!confirm("ออกจากเกมนี้? คะแนนและรางวัลของเกมนี้จะไม่ได้รับ")) return;
+  try {
+    const res = await fetch("/api/lobby/leave", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: currentRoomId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert("ออกจากเกมไม่สำเร็จ: " + (data.error || res.status));
+      return;
+    }
+  } catch (err) {
+    console.error("Unable to leave the game: ", err);
+    alert("ออกจากเกมไม่สำเร็จ");
+    return;
+  }
+  window.location.href = "/lobby";
+}
+
 async function endGame() {
   try {
+    clearInterval(heartbeatTimer);
+    document.getElementById("leave-game-btn").style.display = "none";
     const res = await fetch(`/api/game/endgame/${currentRoomId}`, {
       method: "POST",
     });
