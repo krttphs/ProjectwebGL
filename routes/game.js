@@ -358,7 +358,7 @@ router.get("/languages", async (req, res) => {
 
 router.post("/submissions", requireAuth, async (req, res) => {
   const { source_code, language_id, roomId, computerId, type } = req.body;
-  if (!["62", "63", "71"].includes(String(language_id)))
+  if (!Number.isInteger(Number(language_id)))
     return res.status(400).json({ error: "unsupported language" });
   if (typeof source_code !== "string" || !roomId || !computerId) {
     return res.status(400).json({ error: "ข้อมูลไม่ครบ" });
@@ -412,7 +412,10 @@ router.post("/submissions", requireAuth, async (req, res) => {
       body: JSON.stringify({ source_code, language_id, stdin: stdin ?? "" }),
       signal: AbortSignal.timeout(90_000), // เผื่อ judge ตื่นจากหลับ
     });
-    if (!judgeRes.ok) throw new Error("judge error " + judgeRes.status);
+    if (!judgeRes.ok){
+      const j = await judgeRes.json().catch(() => ({}));
+      return res.status(judgeRes.status === 409 ? 409 : 502).json({ error: j.error || "judge error" });
+    }
     const r = await judgeRes.json();
 
     //คอมไพล์ไม่ผ่าน
