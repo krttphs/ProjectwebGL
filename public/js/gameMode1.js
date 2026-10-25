@@ -183,6 +183,262 @@ function setScoreUI(score) {
   myScore = score;
   document.getElementById("score-number").textContent = score;
 }
+
+// ===== Server Heat (ค่าของทั้งห้อง: submit ผิด +10, ครบ 100 = overheat) =====
+const HEAT_MAX = 100;
+let roomHeat = 0;
+let heatPollTimer = null;
+
+function isOverheated() {
+  return roomHeat >= HEAT_MAX;
+}
+
+let heatSentToUnity = null;
+const HEAT_WARNING = 70;
+
+// ป้ายเตือนกลางจอ: ≥70% เตือนสีส้ม, 100% overheat สีแดงกะพริบ (ซ่อนเมื่อเกมจบ)
+function renderHeatWarning() {
+  const el = document.getElementById("heat-warning");
+  el.classList.remove("warn", "overheat");
+  el.replaceChildren();
+  if (isGameEnded) return;
+
+  if (isOverheated()) {
+    el.classList.add("overheat");
+    el.append("🔥 SERVER OVERHEAT!");
+    const detail = document.createElement("small");
+    detail.textContent =
+      "Submit ถูกล็อก และคะแนนทุกคนกำลังลดลง — ไปที่ Server Terminal เพื่อระบายความร้อน";
+    el.appendChild(detail);
+  } else if (roomHeat >= HEAT_WARNING) {
+    el.classList.add("warn");
+    el.append(`⚠️ Server เริ่มร้อนแล้ว (${roomHeat}%) — ระวัง submit ผิด`);
+  }
+}
+
+function setHeatUI(heat) {
+  roomHeat = Math.max(0, Math.min(HEAT_MAX, Number(heat) || 0));
+  const overheated = isOverheated();
+
+  renderHeatWarning();
+
+  // ให้ Unity แสดงแถบ heat ใน HUD + ควัน/ไฟแดงที่ server (ServerHeatFX.cs) — ส่งเฉพาะตอนค่าเปลี่ยน
+  if (unityInstance && roomHeat !== heatSentToUnity) {
+    heatSentToUnity = roomHeat;
+    unityInstance.SendMessage("ServerHeatFX", "SetHeat", String(roomHeat));
+  }
+
+  // overheat → ทั้งห้อง submit ไม่ได้ (Run ยังได้) — server ก็บล็อกซ้ำอีกชั้น
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = overheated;
+  btn.title = overheated ? "Server ร้อนเกินไป ไประบายความร้อนที่ Server Terminal ก่อน" : "";
+
+  if (terminalOpen && !coolingChallenge) renderTerminalIdle();
+}
+
+// ดึง heat + คะแนนของเราเป็นระยะ (ตอน overheat คะแนนถูกหักฝั่ง server เรื่อยๆ)
+async function refreshHeat() {
+  if (!currentRoomId) return;
+  try {
+    const res = await fetch(`/api/game/heat/${currentRoomId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setHeatUI(data.heat);
+    if (typeof data.score === "number" && data.score !== myScore) setScoreUI(data.score);
+  } catch (err) {
+    console.error("refreshHeat error:", err);
+  }
+}
+
+function startHeatPolling() {
+  if (heatPollTimer) return;
+  refreshHeat();
+  heatPollTimer = setInterval(refreshHeat, 2000);
+}
+
+function stopHeatPolling() {
+  clearInterval(heatPollTimer);
+  heatPollTimer = null;
+  renderHeatWarning(); // isGameEnded แล้ว → ซ่อนป้าย
+  // จบเกม → ปิดเอฟเฟกต์ overheat ใน Unity
+  if (unityInstance) unityInstance.SendMessage("ServerHeatFX", "SetHeat", "0");
+}
+
+// ===== Server Terminal: mini game ระบายความร้อน =====
+// เริ่มได้ทุกเมื่อที่ heat > 0: พิมพ์คำสั่งที่โชว์ให้ครบทุกบรรทัดภายในเวลา → heat กลับเป็น 0
+const terminalInput = document.getElementById("terminal-input");
+let coolingChallenge = null; // { commands, answers, step, deadline, timer }
+
+function setTerminalMessage(text, isError = false) {
+  const el = document.getElementById("terminal-message");
+  el.textContent = text;
+  el.classList.toggle("error", isError);
+}
+
+function renderTerminalIdle() {
+  const status = document.getElementById("terminal-status");
+  const startBtn = document.getElementById("terminal-start-btn");
+  document.getElementById("terminal-command").classList.add("hidden");
+  startBtn.style.display = "block";
+
+  // ระบายความร้อนได้ทุกเมื่อที่ heat > 0
+  if (isOverheated()) {
+    status.textContent = `> TEMPERATURE CRITICAL (${roomHeat}%)`;
+    startBtn.disabled = false;
+  } else if (roomHeat > 0) {
+    status.textContent = `> Temperature ${roomHeat}% — ระบายความร้อนได้`;
+    startBtn.disabled = false;
+  } else {
+    status.textContent = "> Temperature 0% — Server เย็นอยู่ ไม่ต้องระบายความร้อน";
+    startBtn.disabled = true;
+  }
+}
+
+function setTerminalOpen(open) {
+  terminalOpen = open;
+  const panel = document.getElementById("terminal-panel");
+  const btn = document.getElementById("toggle-editor-btn");
+  const unityCanvas = document.getElementById("unity-canvas");
+
+  if (open) {
+    btn.textContent = "Close Terminal";
+    if (document.pointerLockElement) document.exitPointerLock();
+    if (unityCanvas) unityCanvas.style.pointerEvents = "none";
+    setTerminalMessage("");
+    renderTerminalIdle();
+    panel.classList.remove("hidden");
+  } else {
+    btn.textContent = "Open Terminal";
+    stopCoolingChallenge();
+    terminalInput.blur();
+    panel.classList.add("hidden");
+    // คืนเมาส์/คีย์บอร์ดให้ Unity ทันที ไม่งั้นกดเดินไม่ได้จนกว่าจะคลิกเกม
+    if (unityCanvas) {
+      unityCanvas.style.pointerEvents = "";
+      if (!unityCanvas.hasAttribute("tabindex")) unityCanvas.tabIndex = -1;
+      unityCanvas.focus();
+    }
+    // ปลดล็อกตัวละครใน Unity — ส่งไปที่ ServerHeatFX (ชื่อไม่ซ้ำ) ให้ปลดล็อก server ที่เปิดอยู่
+    // (object ของ server ในฉากชื่อซ้ำกันหลายตัว SendMessage ตามชื่อจึงอาจไปผิดตัว)
+    if (unityInstance) unityInstance.SendMessage("ServerHeatFX", "OnTerminalClosed");
+  }
+}
+
+function stopCoolingChallenge() {
+  if (coolingChallenge) clearInterval(coolingChallenge.timer);
+  coolingChallenge = null;
+  terminalInput.value = "";
+  terminalInput.classList.remove("wrong");
+}
+
+function showCoolingStep() {
+  const c = coolingChallenge;
+  document.getElementById("terminal-step").textContent =
+    `${c.step + 1}/${c.commands.length}`;
+  document.getElementById("terminal-target").textContent = c.commands[c.step];
+  terminalInput.value = "";
+  terminalInput.focus();
+}
+
+async function startCoolingChallenge() {
+  setTerminalMessage("");
+  try {
+    const res = await fetch("/api/game/heat/challenge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: currentRoomId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (typeof data.heat === "number") setHeatUI(data.heat);
+      setTerminalMessage(data.error || "เริ่มไม่สำเร็จ", true);
+      return;
+    }
+
+    stopCoolingChallenge();
+    coolingChallenge = {
+      commands: data.commands,
+      answers: [],
+      step: 0,
+      deadline: Date.now() + data.timeLimit * 1000,
+      timer: null,
+    };
+    document.getElementById("terminal-status").textContent = "> COOLING IN PROGRESS...";
+    document.getElementById("terminal-start-btn").style.display = "none";
+    document.getElementById("terminal-command").classList.remove("hidden");
+
+    const timerEl = document.getElementById("terminal-timer");
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((coolingChallenge.deadline - Date.now()) / 1000));
+      timerEl.textContent = left;
+      if (left <= 0) {
+        stopCoolingChallenge();
+        renderTerminalIdle();
+        setTerminalMessage("หมดเวลา! ลองใหม่อีกครั้ง", true);
+      }
+    };
+    tick();
+    coolingChallenge.timer = setInterval(tick, 250);
+    showCoolingStep();
+  } catch (err) {
+    console.error("startCoolingChallenge error:", err);
+    setTerminalMessage("เริ่มไม่สำเร็จ", true);
+  }
+}
+
+async function submitCoolingChallenge() {
+  const c = coolingChallenge;
+  try {
+    const res = await fetch("/api/game/heat/cool", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: currentRoomId, answers: c.answers }),
+    });
+    const data = await res.json();
+    stopCoolingChallenge();
+    if (!res.ok) {
+      renderTerminalIdle();
+      setTerminalMessage(data.error || "ระบายความร้อนไม่สำเร็จ", true);
+      return;
+    }
+    setHeatUI(data.heat);
+    renderTerminalIdle();
+    setTerminalMessage("✔ Server cooled down! Submit ได้ตามปกติแล้ว");
+  } catch (err) {
+    console.error("submitCoolingChallenge error:", err);
+    stopCoolingChallenge();
+    renderTerminalIdle();
+    setTerminalMessage("ระบายความร้อนไม่สำเร็จ", true);
+  }
+}
+
+// กด Enter / ปุ่ม Enter → submit form (ฟัง keydown ตรงๆ ไม่ได้ เพราะตัวดักคีย์กัน Unity หยุด event ไว้ที่ window)
+document.getElementById("terminal-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!coolingChallenge) return;
+  const c = coolingChallenge;
+  const typed = terminalInput.value.trim();
+
+  if (typed !== c.commands[c.step]) {
+    terminalInput.classList.add("wrong");
+    setTerminalMessage("คำสั่งไม่ถูกต้อง พิมพ์ใหม่", true);
+    return;
+  }
+
+  terminalInput.classList.remove("wrong");
+  setTerminalMessage("");
+  c.answers.push(typed);
+  c.step++;
+  if (c.step < c.commands.length) showCoolingStep();
+  else submitCoolingChallenge();
+});
+
+document
+  .getElementById("terminal-start-btn")
+  .addEventListener("click", startCoolingChallenge);
+document
+  .getElementById("terminal-close-btn")
+  .addEventListener("click", () => setTerminalOpen(false));
 // -------- Judge0 --------
 const runBtn = document.getElementById("runBtn");
 const output = document.getElementById("output");
@@ -291,12 +547,14 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
     clearInterval(submitTimeout);
 
     if (!res.ok) {
+      if (result.overheated) setHeatUI(result.heat);
       output.textContent = "⚠️ " + (result.error || "ส่งไม่สำเร็จ");
       return;
     }
 
     isGetATask = false;
     setScoreUI(result.score);
+    if (typeof result.heat === "number") setHeatUI(result.heat);
     output.textContent = "เสร็จสิ้น！";
 
     if (unityInstance) {
@@ -482,6 +740,12 @@ window.ShowCodeEditor = async function (dataString) {
     console.log(
       "Unity บอกให้เปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
     );
+    // Server Terminal ไม่ใช่คอมเขียนโค้ด → เปิด mini game ระบายความร้อนเลย
+    if (uiType === "terminal") {
+      currentObjectType = "terminal";
+      setTerminalOpen(true);
+      return;
+    }
     if (myComputerId == null && isMine) {
       const res = await fetch("/api/game/mycomputer", {
         method: "PATCH",
@@ -574,6 +838,12 @@ window.HideCodeEditor = function (dataString) {
     "Unity บอกให้ปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
   );
   currentObjectId = objectId;
+  // กด E ซ้ำที่ server ใน Unity → ปิด Server Terminal (Unity ปลดล็อกตัวละครเองแล้ว)
+  if (uiType === "terminal") {
+    currentObjectType = "terminal";
+    if (terminalOpen) setTerminalOpen(false);
+    return;
+  }
   currentObjectType = "editor";
   editorBtn.innerText = "Open Editor";
   setEditorOpen(false);
@@ -695,6 +965,7 @@ async function giveUp() {
 
   isGetATask = false;
   setScoreUI(result.score);
+  if (typeof result.heat === "number") setHeatUI(result.heat);
   if (unityInstance) {
     unityInstance.SendMessage("GameManager", "SpawnResultBall", "wrong");
     if (currentObjectId) {
@@ -728,6 +999,7 @@ async function saveCode() {
 
 async function startTimer() {
   if (!currentRoomId) return;
+  startHeatPolling();
 
   try {
     const res = await fetch(`/api/game/room/${currentRoomId}`);
@@ -910,9 +1182,70 @@ async function leaveGame() {
   window.location.href = "/lobby";
 }
 
+// Unity ส่งผลสรุปวันสุดท้ายมา (DailyAwards.cs ผ่าน WebGLBridge.jslib)
+// { day, outcome: "awards"|"solo"|"tie"|"none", tieScore, employees:[{name,score}], slackers:[...] }
+window.OnDayAwards = function (json) {
+  let result;
+  try {
+    result = JSON.parse(json);
+  } catch (err) {
+    console.error("Invalid day awards from Unity:", err);
+    return;
+  }
+  renderFinalDayAwards(result);
+};
+
+function renderFinalDayAwards(result) {
+  const box = document.getElementById("final-day-awards");
+  box.replaceChildren();
+
+  const heading = document.createElement("h3");
+  heading.textContent = `สรุปวันที่ ${result.day} (วันสุดท้าย)`;
+  box.appendChild(heading);
+
+  const addAward = (cls, label, players) => {
+    const row = document.createElement("div");
+    row.className = `award ${cls}`;
+    const tag = document.createElement("span");
+    tag.className = "award-label";
+    tag.textContent = label;
+    row.appendChild(tag);
+    // ชื่อผู้เล่นมาจากผู้ใช้ → ใส่เป็น textContent กันโดนแทรก HTML
+    row.appendChild(
+      document.createTextNode(
+        (players || []).map((p) => `${p.name} (${p.score})`).join(", "),
+      ),
+    );
+    box.appendChild(row);
+  };
+
+  const addNote = (text) => {
+    const note = document.createElement("div");
+    note.className = "award-note";
+    note.textContent = text;
+    box.appendChild(note);
+  };
+
+  if (result.outcome === "awards" || result.outcome === "solo") {
+    addAward("award-employee", "EMPLOYEE OF THE DAY", result.employees);
+    if (result.slackers && result.slackers.length > 0) {
+      addAward("award-slacker", "THE SLACKER", result.slackers);
+    }
+  } else if (result.outcome === "tie") {
+    addNote(`ทุกคนเสมอกัน (${result.tieScore})`);
+  } else {
+    addNote("วันนี้ยังไม่มีใครส่งงาน");
+  }
+
+  box.style.display = "block";
+}
+
 async function endGame() {
   try {
+    isGameEnded = true;
     clearInterval(heartbeatTimer);
+    stopHeatPolling();
+    if (terminalOpen) setTerminalOpen(false);
     document.getElementById("leave-game-btn").style.display = "none";
     const res = await fetch(`/api/game/endgame/${currentRoomId}`, {
       method: "POST",
@@ -952,7 +1285,8 @@ async function endGame() {
       if (
         document.activeElement === codeInput1 ||
         document.activeElement === codeInput2 ||
-        document.activeElement === codeInput3
+        document.activeElement === codeInput3 ||
+        document.activeElement === terminalInput
       ) {
         e.stopImmediatePropagation();
         // ไม่ preventDefault — ให้ browser จัดการ input ตามปกติ

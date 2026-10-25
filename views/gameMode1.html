@@ -53,6 +53,9 @@
           <div id="progress-bar-full"></div>
         </div>
       </div>
+      <!-- แถบ Server Heat อยู่ใน HUD ของ Unity (ServerHeatFX.cs) ใต้กล่อง Day/เวลา -->
+      <!-- ป้ายเตือน heat: ≥70% สีส้ม / 100% overheat สีแดง (gameMode1.js setHeatUI) -->
+      <div id="heat-warning"></div>
       <div id="unity-container">
         <canvas id="unity-canvas"></canvas>
         <div id="unity-loading-bar">
@@ -135,6 +138,9 @@
           >
           🪙
         </p>
+
+        <!-- สรุปวันสุดท้ายจาก Unity (Employee of the Day / The Slacker) — gameMode1.js เติมให้ -->
+        <div id="final-day-awards" style="display: none"></div>
 
         <button
           onclick="window.location.href = '/'"
@@ -281,6 +287,35 @@ console.log(solve(x, y));</textarea
 
       <div id="output">Output logs will appear here...</div>
     </div>
+    <!-- Server Terminal: mini game ระบายความร้อน (เปิดจาก server ใน Unity) -->
+    <div class="terminal-panel hidden" id="terminal-panel">
+      <div class="terminal-header">
+        <span>root@server:~# cooling-system</span>
+        <button id="terminal-close-btn" title="Close">✕</button>
+      </div>
+      <div id="terminal-status"></div>
+      <div id="terminal-command" class="hidden">
+        <div class="terminal-label">
+          พิมพ์คำสั่ง (<span id="terminal-step">1/5</span>) ·
+          เหลือ <span id="terminal-timer">40</span> วิ
+        </div>
+        <code id="terminal-target"></code>
+        <!-- ใช้ form: กด Enter แล้วเกิด submit event (keydown ถูกดักกันไม่ให้ Unity ได้ปุ่มอยู่) -->
+        <form id="terminal-form">
+          <input
+            id="terminal-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="พิมพ์คำสั่งแล้วกด Enter"
+          />
+          <button type="submit" id="terminal-enter-btn">Enter</button>
+        </form>
+      </div>
+      <div id="terminal-message"></div>
+      <button id="terminal-start-btn">Start cooling</button>
+    </div>
+
     <div class="editor-panel hidden" id="getATask-panel">
       <h1>Start working</h1>
       <div
