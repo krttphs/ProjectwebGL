@@ -16,6 +16,9 @@
         .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
         .hint { font-size: 12px; opacity: .7; margin: -4px 0 4px; }
         .err-detail { font-size: 12px; color: #ef4444; max-width: 260px; white-space: pre-wrap; word-break: break-word; }
+        .setup-head { margin: 8px 0 4px; font-size: 14px; }
+        .lang-id { opacity: .6; font-weight: 400; margin-left: 4px; }
+        .orphan { opacity: .7; }
     </style>
 </head>
 <body>
@@ -79,9 +82,9 @@
             <label>Input (submit) <textarea id="q_input_submit" rows="2"></textarea></label>
             <label>Expected output <textarea id="q_expected_output" rows="2"></textarea></label>
             <label>Shown expected output <textarea id="q_show_expect_output" rows="2"></textarea></label>
-            <label>Setup code: Python <textarea class="code" id="q_setup_code_python" rows="4"></textarea></label>
-            <label>Setup code: JavaScript <textarea class="code" id="q_setup_code_js" rows="4"></textarea></label>
-            <label>Setup code: Java <textarea class="code" id="q_setup_code_java" rows="4"></textarea></label>
+            <h4 class="setup-head">Setup code</h4>
+            <p class="hint">One box per language from the Languages tab. Leave empty if the language has no starter code.</p>
+            <div id="q_setup_codes"></div>
             <p class="err" id="questErr"></p>
             <div class="actions">
                 <button class="ghost" id="questCancel">Cancel</button>

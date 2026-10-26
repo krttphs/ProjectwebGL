@@ -14,7 +14,7 @@ async function api(method, path, body) {
 
 const $ = (id) => document.getElementById(id);
 const QUEST_TEXT = ['title', 'description', 'input_run', 'input_submit', 'expected_output',
-    'show_expect_output', 'setup_code_python', 'setup_code_js', 'setup_code_java'];
+    'show_expect_output'];
 const LANG_TEXT = ['name', 'image', 'file_name', 'compile_cmd', 'run_cmd'];
 
 // ค่าตั้งต้นสำเร็จรูป เลือกแล้วกรอกฟอร์มให้
@@ -92,6 +92,54 @@ async function loadQuests() {
     });
 }
 
+// สร้างช่องโค้ดตั้งต้น 1 ช่องต่อ 1 ภาษา จากรายการในแท็บ Languages
+function renderSetupCodeFields(setupCode) {
+    const box = $('q_setup_codes');
+    box.replaceChildren();
+
+    const addField = (id, title, orphan) => {
+        const label = document.createElement('label');
+        if (orphan) label.className = 'orphan';
+        label.append(title);
+        const idTag = document.createElement('span');
+        idTag.className = 'lang-id';
+        idTag.textContent = `#${id}`;
+        label.appendChild(idTag);
+
+        const ta = document.createElement('textarea');
+        ta.className = 'code';
+        ta.rows = 4;
+        ta.dataset.langId = id;
+        ta.value = setupCode[id] ?? '';
+        label.appendChild(ta);
+        box.appendChild(label);
+    };
+
+    langs.forEach((l) => addField(String(l.judge0_id), l.name, false));
+
+    // โค้ดของภาษาที่ถูกลบไปแล้ว: ยังโชว์ให้เห็น/ลบได้ ไม่หายเงียบๆ
+    const known = new Set(langs.map((l) => String(l.judge0_id)));
+    Object.keys(setupCode)
+        .filter((id) => !known.has(id))
+        .forEach((id) => addField(id, '(deleted language)', true));
+
+    if (!box.children.length) {
+        const p = document.createElement('p');
+        p.className = 'hint';
+        p.textContent = 'No languages yet. Add one in the Languages tab first.';
+        box.appendChild(p);
+    }
+}
+
+// อ่านทุกช่องกลับเป็น { "71": "...", "62": "..." } (ช่องว่างไม่เก็บ)
+function readSetupCodeFields() {
+    const codes = {};
+    $('q_setup_codes').querySelectorAll('textarea[data-lang-id]').forEach((ta) => {
+        if (ta.value.trim()) codes[ta.dataset.langId] = ta.value;
+    });
+    return codes;
+}
+
 function openQuest(q) {
     editingQuest = q || null;
     $('questDlgTitle').textContent = q ? 'Edit quest' : 'Add quest';
@@ -99,6 +147,7 @@ function openQuest(q) {
     $('q_level').value = q?.level ?? 'easy';
     $('q_rewards').value = q?.rewards ?? 0;
     $('q_is_active').checked = q?.is_active ?? true;
+    renderSetupCodeFields(q?.setup_code || {});
     $('questErr').textContent = '';
     $('questDlg').showModal();
 }
@@ -106,6 +155,7 @@ function openQuest(q) {
 async function saveQuest() {
     const row = { level: $('q_level').value, rewards: parseInt($('q_rewards').value, 10) || 0, is_active: $('q_is_active').checked };
     QUEST_TEXT.forEach((k) => (row[k] = $('q_' + k).value));
+    row.setup_code = readSetupCodeFields();
     if (!row.title.trim()) return ($('questErr').textContent = 'Title is required.');
     try { await (editingQuest ? api('PUT', '/quests/' + editingQuest.id, row) : api('POST', '/quests', row)); }
     catch (e) { return ($('questErr').textContent = e.message); }

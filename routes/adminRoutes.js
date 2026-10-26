@@ -8,8 +8,21 @@ router.use(requireAdmin);
 router.get("/me", (req, res) => res.json({ ok: true }));
 
 const QUEST_FIELDS = ["title", "description", "input_run", "input_submit", "expected_output",
-  "show_expect_output", "level", "rewards", "setup_code_python", "setup_code_js",
-  "setup_code_java", "is_active"];
+  "show_expect_output", "level", "rewards", "setup_code", "is_active"];
+
+// setup_code ต้องเป็น { "judge0_id": "โค้ด", ... } เท่านั้น
+const MAX_SETUP_CODE = 20_000; // ตัวอักษรต่อภาษา
+function checkSetupCode(sc) {
+  if (sc === undefined) return null; // ไม่ได้ส่งมา = ไม่แก้
+  if (sc === null || typeof sc !== "object" || Array.isArray(sc))
+    return "setup_code must be an object like { \"71\": \"...\" }";
+  for (const [id, code] of Object.entries(sc)) {
+    if (!/^\d{1,4}$/.test(id)) return `setup_code key "${id}" must be a Judge0 ID`;
+    if (typeof code !== "string") return `setup_code for ${id} must be text`;
+    if (code.length > MAX_SETUP_CODE) return `setup_code for ${id} is too long`;
+  }
+  return null;
+}
 
 const pick = (obj, keys) =>
   Object.fromEntries(keys.filter((k) => k in obj).map((k) => [k, obj[k]]));
@@ -49,7 +62,7 @@ function crud(path, table, fields, validate) {
 crud("/quests", "quests", QUEST_FIELDS, (r) =>
   !r.title?.trim() ? "Title is required"
     : !["easy", "medium", "hard"].includes(r.level) ? "Level must be easy, medium or hard"
-      : null);
+      : checkSetupCode(r.setup_code));
 
 // ===================================================================
 // Languages: บันทึกลง DB แล้วสั่ง judge ให้ติดตั้ง image
