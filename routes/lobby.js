@@ -581,4 +581,9 @@ router.post("/join", requireAuth, async (req, res) => {
   }
 });
 
+//คิดไม่ออกว่าจะจัดอันดับจากอะไรดี
+// router.get("/leaderboard",requireAuth, async (req,res)=>{
+//   const {data,error} = await supabase.from("game_rooms").select("created_at,end_time")
+// })
+
 module.exports = router;

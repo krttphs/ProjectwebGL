@@ -158,7 +158,7 @@ router.put("/languages/:id", async (req, res) => {
   const { data: old, error: oldErr } = await supabaseAdmin
     .from("languages").select("judge0_id").eq("id", req.params.id).single();
   if (oldErr) return res.status(404).json({ error: "Language not found" });
-
+       
   const { data, error } = await supabaseAdmin
     .from("languages").update(row).eq("id", req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });

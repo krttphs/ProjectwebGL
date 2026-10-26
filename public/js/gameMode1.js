@@ -155,6 +155,7 @@ function updateProgress(delta) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ roomId: currentRoomId, progress: progress }),
   });
+  myQuest = null;
 }
 
 // เรียกจากฝั่ง Unity (ผ่าน WebGLBridge.jslib) ทุกครั้งที่มีคนกด E เอาบอลให้ NPC
@@ -445,6 +446,12 @@ const output = document.getElementById("output");
 let timeout = null;
 let currentQuest = null;
 let myQuest = null;
+
+function fillSetupCode(quest) {
+  const langId = document.getElementById("lang").value;
+  document.getElementById("code-part1").value = quest?.setup_code?.[langId] || "";
+}
+
 runBtn.addEventListener("click", async () => {
   if (!currentQuest) {
     output.textContent = "⚠️ กรุณาสุ่มโจทย์ก่อน";
@@ -576,6 +583,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 document
   .getElementById("randomQuestBtn")
   .addEventListener("click", async () => {
+    if(myQuest) return alert("ต้องนำบอลไปส่งหัวหน้าก่อน!");
     try {
       let res = await fetch(`/api/game/quests/random`, {
         method: "POST",
@@ -599,7 +607,7 @@ document
 
       currentQuest = quest;
       myQuest = quest;
-      setEditorOpen(true);
+      await setEditorOpen(true);
       // แสดงผลใน UI
       document.getElementById("taskTitle").textContent = quest.title;
       document.getElementById("problem").value = quest.description;
@@ -608,11 +616,10 @@ document
       output.textContent = "สุ่มได้โจทย์: " + quest.title + "\n";
       output.textContent += "Input ที่ใช้: " + quest.input_run + "\n";
       output.textContent += "ผลลัพธ์ที่ต้องการ:\n" + quest.show_expect_output;
-      document.getElementById("code-part1").value =
-        currentQuest.setup_code_java;
-      document.getElementById("code-part2").value = "// สร้างฟังก์ชันของคุณ...";
+      fillSetupCode(currentQuest);
+      document.getElementById("code-part2").value = "";
       document.getElementById("code-part3").value =
-        "// เรียกใช้ฟังก์ชันที่นี่...";
+        "";
       if (myQuest.level === "easy") {
         PROGRESS_INCREMENT_DECREMENT = 10;
       } else if (myQuest.level === "medium") {
@@ -627,21 +634,7 @@ document
   });
 
 document.getElementById("lang").addEventListener("change", (e) => {
-  if (!currentQuest) return;
-
-  const langId = e.target.value;
-  const codePart1 = document.getElementById("code-part1");
-
-  if (langId === "62") {
-    // Java
-    codePart1.value = currentQuest.setup_code_java || "";
-  } else if (langId === "63") {
-    // JavaScript
-    codePart1.value = currentQuest.setup_code_js || "";
-  } else if (langId === "71") {
-    // Python
-    codePart1.value = currentQuest.setup_code_python || "";
-  }
+  if (currentQuest) fillSetupCode(currentQuest);
 });
 function back() {
   window.location.href = "/";
@@ -776,11 +769,11 @@ window.ShowCodeEditor = async function (dataString) {
       output.textContent += "Input ที่ใช้: " + data.quest.input_run + "\n";
       output.textContent +=
         "ผลลัพธ์ที่ต้องการ:\n" + data.quest.show_expect_output;
-      document.getElementById("code-part1").value = data.quest.setup_code_java; //ต้องแก้
+      fillSetupCode(data.quest); 
       document.getElementById("code-part2").value =
-        data.code.code_part_2 || "// สร้างฟังก์ชันของคุณ...";
+        data.code.code_part_2 || "";
       document.getElementById("code-part3").value =
-        data.code.code_part_3 || "// เรียกใช้ฟังก์ชันที่นี่...";
+        data.code.code_part_3 || "";
       if (unityInstance) {
         unityInstance.SendMessage(currentObjectId, "UpdateHavingTask", "true");
       }
@@ -801,12 +794,11 @@ window.ShowCodeEditor = async function (dataString) {
         output.textContent += "Input ที่ใช้: " + currentQuest.input_run + "\n";
         output.textContent +=
           "ผลลัพธ์ที่ต้องการ:\n" + currentQuest.show_expect_output;
-        document.getElementById("code-part1").value =
-          currentQuest.setup_code_java; //ต้องแก้
+          fillSetupCode(currentQuest); 
         document.getElementById("code-part2").value =
-          data.code.code_part_2 || "// สร้างฟังก์ชันของคุณ...";
+          data.code.code_part_2 || "";
         document.getElementById("code-part3").value =
-          data.code.code_part_3 || "// เรียกใช้ฟังก์ชันที่นี่...";
+          data.code.code_part_3 || "";
         if (unityInstance) {
           unityInstance.SendMessage(
             currentObjectId,

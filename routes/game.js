@@ -279,9 +279,7 @@ router.post("/quests/random", requireAuth, async (req, res) => {
     show_expect_output,
     input_run,
     level,
-    setup_code_python,
-    setup_code_js,
-    setup_code_java,
+    setup_code,
   } = data[0];
   return res.json({
     id,
@@ -290,9 +288,7 @@ router.post("/quests/random", requireAuth, async (req, res) => {
     show_expect_output,
     input_run,
     level,
-    setup_code_python,
-    setup_code_js,
-    setup_code_java,
+    setup_code,
   });
 });
 
@@ -459,7 +455,7 @@ router.get("/computerCode/:roomId/:comId", requireAuth, async (req, res) => {
       const { data: questData, error: questError } = await supabase
         .from("quests")
         .select(
-          "id, title, description, show_expect_output, input_run, level, setup_code_python, setup_code_js, setup_code_java",
+          "id, title, description, show_expect_output, input_run, level, setup_code",
         )
         .eq("id", data.current_quest_id)
         .single();
