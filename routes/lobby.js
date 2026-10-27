@@ -224,8 +224,11 @@ async function sweepAbandonedRooms() {
 
   const now = Date.now();
   for (const room of rooms) {
+    // ดูแลเฉพาะห้องที่ผู้เล่นต่อเข้า server ตัวนี้ (เคยได้ heartbeat) เท่านั้น
+    // ถ้ามี server หลายตัวใช้ Supabase เดียวกัน (เช่น เพื่อนรัน dev อีกเครื่อง) server ที่ไม่มีคนต่ออยู่
+    // จะไม่เห็น heartbeat เลย แล้วไปปิดห้องที่ยังเล่นอยู่ของ server อื่น → หน้าเว็บขึ้น Time's Up ก่อนเวลา
+    if (!heartbeats.has(room.id)) continue;
     const roomPlayers = (players || []).filter((p) => p.room_id === room.id);
-    if (!heartbeats.has(room.id)) heartbeats.set(room.id, new Map());
     const seen = heartbeats.get(room.id);
 
     // ผู้เล่นที่ยังไม่เคยส่ง heartbeat (เพิ่งเข้า / server เพิ่ง restart) ได้เวลาผ่อนผันนับจากตอนนี้
