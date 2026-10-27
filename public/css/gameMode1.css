@@ -489,6 +489,22 @@
         opacity: 0.8;
       }
 
+      #quota-text {
+        margin-left: 8px;
+        color: #f1fa8c;
+        text-transform: none;
+      }
+
+      #quota-heat-text {
+        font-size: 12px;
+        color: #ffb86c;
+      }
+
+      /* ส่งครบโควต้าวันนี้แล้ว */
+      #progress-board.quota-met #quota-text {
+        color: #50fa7b;
+      }
+
       #progress-bar-empty {
         width: 260px;
         height: 16px;

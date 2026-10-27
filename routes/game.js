@@ -27,9 +27,8 @@ async function finishQuest(roomId, playerId, questId, delta) {
 }
 
 // ===== Server Heat (ค่าความร้อนของทั้งห้อง 0-100) =====
-// submit ผิด / ยอมแพ้ (ได้ red ball) +10, ครบ 100 = overheat → เกมจบทันที "You got fired" (ไม่ได้เหรียญ)
+// submit ผิด / ยอมแพ้ (ได้ red ball) +heat ตามขั้น (เริ่ม 10 — ดูโควต้ารายวันด้านล่าง), ครบ 100 = overheat → เกมจบทันที "You got fired" (ไม่ได้เหรียญ)
 //   ลด heat ได้ด้วย mini game ที่ server terminal (heat กลับเป็น 0) — ทำได้ทุกเมื่อที่ heat > 0
-const HEAT_PER_WRONG = 10;
 const HEAT_MAX = 100;
 const COOLING_COMMAND_COUNT = 5;
 const COOLING_TIME_LIMIT_S = 40;
@@ -121,6 +120,119 @@ async function fireRoom(roomId) {
   console.log(`[heat] room ${roomId}: SERVER OVERHEAT → game over (fired) after ${played}s`);
 }
 
+// ===== โควต้ารายวัน (ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน) =====
+// วันที่ 1..7 ต้องส่ง 3 / 5 / 7 / 8 / 9 / 10 / 12 ลูก — วันไหนไม่ครบ heat ต่อการส่งผิดขึ้น 1 ขั้น
+// 10 → 20 → 40 → 80 → 100 (ขึ้นอย่างเดียว ไม่ลด) · บอลแดงไม่นับ
+// เก็บใน DB (ไม่เพิ่มคอลัมน์): game_rooms.progress = จำนวนบอลเขียวของวันนี้ (ทุกคนเห็นเท่ากันผ่าน realtime)
+//                            game_rooms.difficulty = "q:<วัน (เริ่ม 0)>:<ขั้น heat>" (คอลัมน์เดิมไม่ได้ใช้)
+const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12];
+const HEAT_STEPS = [10, 20, 40, 80, 100];
+const QUOTA_STATE_COLUMN = "difficulty";
+const ROOM_FIELDS = `status, end_time, morning_time, noon_time, evening_time, day_count, progress, ${HEAT_COLUMN}, ${QUOTA_STATE_COLUMN}`;
+
+function quotaFor(day) {
+  return DAILY_QUOTA[Math.min(Math.max(0, day), DAILY_QUOTA.length - 1)];
+}
+
+function parseQuotaState(value) {
+  const m = /^q:(\d+):(\d+)$/.exec(value || "");
+  return m ? { day: Number(m[1]), step: Number(m[2]) } : { day: 0, step: 0 };
+}
+
+function formatQuotaState(day, step) {
+  return `q:${day}:${step}`;
+}
+
+// วันที่เท่าไรแล้ว (เริ่ม 0) จากเวลาจบเกม (end_time) — ตรงกับ Day ใน Unity
+function currentDayIndex(room) {
+  const dayLength = (room.morning_time || 0) + (room.noon_time || 0) + (room.evening_time || 0);
+  const days = room.day_count || 1;
+  if (!room.end_time || dayLength <= 0) return 0;
+  const start = new Date(room.end_time).getTime() - dayLength * days * 1000;
+  const index = Math.floor((Date.now() - start) / (dayLength * 1000));
+  return Math.min(Math.max(0, index), days - 1);
+}
+
+function heatPerWrong(room) {
+  const { step } = parseQuotaState(room?.[QUOTA_STATE_COLUMN]);
+  return HEAT_STEPS[Math.min(step, HEAT_STEPS.length - 1)];
+}
+
+// ข้อมูลโควต้าส่งให้หน้าเว็บ
+function quotaInfo(room) {
+  const { day, step } = parseQuotaState(room?.[QUOTA_STATE_COLUMN]);
+  return {
+    day,
+    delivered: room?.progress ?? 0,
+    quota: quotaFor(day),
+    heatStep: step,
+    heatPerWrong: heatPerWrong(room),
+  };
+}
+
+// ปิดวันที่ผ่านไปแล้ว: วันไหนส่งไม่ครบโควต้า → heat ต่อการส่งผิดขึ้น 1 ขั้น แล้วเริ่มนับวันใหม่จาก 0
+// เรียกได้เรื่อยๆ (ตอน poll / ส่งบอล / ส่งผิด) — ทำงานจริงแค่ครั้งแรกหลังขึ้นวันใหม่ (compare-and-swap)
+async function rollQuotaDays(roomId) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: room, error } = await supabase
+      .from("game_rooms")
+      .select(ROOM_FIELDS)
+      .eq("id", roomId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!room || room.status !== "playing") return room;
+
+    const state = parseQuotaState(room[QUOTA_STATE_COLUMN]);
+    const today = currentDayIndex(room);
+    if (today <= state.day) return room;
+
+    // วันที่เพิ่งจบ + วันที่ข้ามไปทั้งวัน (ไม่มีใครส่งเลย) = ไม่ครบโควต้า
+    let missed = (room.progress ?? 0) < quotaFor(state.day) ? 1 : 0;
+    missed += today - state.day - 1;
+    const step = Math.min(state.step + missed, HEAT_STEPS.length - 1);
+    const next = formatQuotaState(today, step);
+
+    const { data: updated, error: updErr } = await supabase
+      .from("game_rooms")
+      .update({ progress: 0, [QUOTA_STATE_COLUMN]: next })
+      .eq("id", roomId)
+      .eq("status", "playing")
+      .eq(QUOTA_STATE_COLUMN, room[QUOTA_STATE_COLUMN])
+      .select("id");
+    if (updErr) throw updErr;
+    if (!updated || updated.length === 0) continue; // อีกคนปิดวันไปก่อนแล้ว → อ่านใหม่
+
+    console.log(
+      `[quota] room ${roomId}: day ${state.day + 1} delivered ${room.progress ?? 0}/${quotaFor(state.day)}` +
+      ` → day ${today + 1}, heat per wrong ${HEAT_STEPS[step]} (missed ${missed})`,
+    );
+    return { ...room, progress: 0, [QUOTA_STATE_COLUMN]: next };
+  }
+  throw new Error("quota update conflict, please retry");
+}
+
+// บอลเขียว 1 ลูกถึง NPC → นับโควต้าของวันนี้ +1
+async function addQuotaDelivery(roomId) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const room = await rollQuotaDays(roomId);
+    if (!room || room.status !== "playing") return room;
+
+    const delivered = (room.progress ?? 0) + 1;
+    const { data: updated, error } = await supabase
+      .from("game_rooms")
+      .update({ progress: delivered })
+      .eq("id", roomId)
+      .eq("status", "playing")
+      .eq("progress", room.progress ?? 0)
+      .eq(QUOTA_STATE_COLUMN, room[QUOTA_STATE_COLUMN])
+      .select("id");
+    if (error) throw error;
+    if (!updated || updated.length === 0) continue;
+    return { ...room, progress: delivered };
+  }
+  throw new Error("quota update conflict, please retry");
+}
+
 // mini game ที่ออกให้แต่ละคน (เก็บในหน่วยความจำพอ: หลุดแล้วขอใหม่ได้)
 const coolingChallenges = new Map(); // `${roomId}:${userId}` -> { commands, issuedAt }
 
@@ -204,8 +316,7 @@ router.post("/endgame/:roomId", requireAuth, async (req, res) => {
 
     if (rewardError) throw rewardError;
 
-    // เหตุผลที่เกมจบ ให้หน้าสรุปขึ้นข้อความถูก (progress ครบ 100 = งานเสร็จก่อนเวลา)
-    const reason = (room.progress ?? 0) >= 100 ? "completed" : "timeup";
+    const reason = "timeup";
     res.json({ success: true, result: rewardData, reason });
   } catch (err) {
     console.error("End game error:", err);
@@ -265,6 +376,13 @@ async function tryStartGame(roomId) {
       .update({ status: "playing", end_time: timeEnd, [HEAT_COLUMN]: 0 }) // เริ่มเกม heat = 0
       .eq("id", roomId)
       .eq("status", "loading");
+
+    // เริ่มนับโควต้าวันที่ 1 (แยก update ไว้ ถ้าเขียนไม่ได้ เกมยังเริ่มได้ตามปกติ)
+    const { error: quotaErr } = await supabase
+      .from("game_rooms")
+      .update({ progress: 0, [QUOTA_STATE_COLUMN]: formatQuotaState(0, 0) })
+      .eq("id", roomId);
+    if (quotaErr) console.error("[quota] cannot reset quota state:", quotaErr.message);
   }
 }
 
@@ -389,18 +507,20 @@ router.post("/giveup", requireAuth, async (req, res) => {
       return res.status(409).json({ error: "โจทย์นี้จบไปแล้ว" });
     }
     // ยอมแพ้ = ได้ red ball → server ร้อนขึ้น
-    const heat = await addRoomHeat(roomId, HEAT_PER_WRONG, "give up");
+    const room = await rollQuotaDays(roomId);
+    const heat = await addRoomHeat(roomId, heatPerWrong(room), "give up");
     res.json({ score, heat });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/game/heat/:roomId — ค่า heat ของห้อง (จาก DB) + คะแนนของเรา
+// GET /api/game/heat/:roomId — ค่า heat + โควต้าวันนี้ของห้อง (จาก DB) + คะแนนของเรา
+// (หน้าเว็บเรียกทุก 5 วิ → ตรงนี้ปิดวันที่ผ่านไปแล้วด้วย ขั้น heat จะขึ้นภายในไม่กี่วิหลังขึ้นวันใหม่)
 router.get("/heat/:roomId", requireAuth, async (req, res) => {
   try {
     const { roomId } = req.params;
-    const room = await getRoom(roomId);
+    const room = await rollQuotaDays(roomId);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
     const { data: me, error } = await supabase
@@ -411,7 +531,22 @@ router.get("/heat/:roomId", requireAuth, async (req, res) => {
       .maybeSingle();
     if (error) throw error;
 
-    res.json({ heat: heatOf(room), maxHeat: HEAT_MAX, score: me?.score ?? null });
+    res.json({ heat: heatOf(room), maxHeat: HEAT_MAX, score: me?.score ?? null, ...quotaInfo(room) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/game/ball-delivered { roomId, color: "green" | "red" }
+// เจ้าของบอล (หรือคนส่งแทนถ้าเจ้าของออกไปแล้ว) แจ้งว่าบอลถึง NPC แล้ว — บอลเขียวนับโควต้าวันนี้ +1
+router.post("/ball-delivered", requireAuth, async (req, res) => {
+  try {
+    const { roomId, color } = req.body || {};
+    if (!roomId) return res.status(400).json({ error: "roomId is required" });
+
+    const room = color === "green" ? await addQuotaDelivery(roomId) : await rollQuotaDays(roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+    res.json(quotaInfo(room));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -578,7 +713,9 @@ router.post("/submissions", requireAuth, async (req, res) => {
         return res.status(409).json({ error: "โจทย์นี้ถูกส่งไปแล้ว" });
       }
       // ผิด = ได้ red ball → server ร้อนขึ้น (ถูกไม่เพิ่ม)
-      const heat = success ? heatOf(await getRoom(roomId)) : await addRoomHeat(roomId, HEAT_PER_WRONG, "wrong submit");
+      const heat = success
+        ? heatOf(await getRoom(roomId))
+        : await addRoomHeat(roomId, heatPerWrong(await rollQuotaDays(roomId)), "wrong submit");
       return res.json({ success, status, score, heat });
     };
 

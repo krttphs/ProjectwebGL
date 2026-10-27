@@ -122,61 +122,82 @@ window.addEventListener("resize", () => {
   if (codePart3) codePart3.addEventListener("keydown", handleTab);
 })();
 // -------- Progress (Red/Green) --------
+// level ของโจทย์ (ตั้งตอนสุ่มโจทย์) — ไม่ได้ใช้คำนวณ progress แล้ว (progress = นับบอลเขียวรายวันของทั้งห้อง)
 let PROGRESS_INCREMENT_DECREMENT = 0;
-const PROGRESS_DISPLAY_MS = 5000;
 
-let progress = 0;
-let progressHideTimeout = null;
+// ===== Progress = โควต้ารายวันของทั้งห้อง =====
+// ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน (3 / 5 / 7 / 8 / 9 / 10 / 12) — ไม่ครบ → heat ต่อการส่งผิดขึ้นขั้น
+// ค่าอยู่ใน DB (routes/game.js) → ทุกคนเห็นเท่ากัน: ได้ทันทีผ่าน realtime ของ game_rooms + poll /heat สำรอง
+const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12]; // ตรงกับ routes/game.js
+const HEAT_STEPS = [10, 20, 40, 80, 100];
+const QUOTA_STATE_COLUMN = "difficulty"; // "q:<วัน>:<ขั้น heat>" (ตรงกับ routes/game.js)
 
-function setProgressUI(value) {
-  const fill = document.getElementById("progress-bar-full");
-  if (fill) fill.style.width = value + "%";
+function setQuotaUI(info) {
+  const quota = info.quota || 1;
+  const delivered = info.delivered || 0;
+  const met = delivered >= quota;
+
+  document.getElementById("progress-bar-full").style.width =
+    Math.min(100, (delivered / quota) * 100) + "%";
+  document.getElementById("quota-text").textContent =
+    `Day ${info.day + 1} · ${delivered}/${quota}${met ? " ✓" : ""}`;
+  document.getElementById("quota-heat-text").textContent =
+    `ส่งผิด = +${info.heatPerWrong} heat`;
+  document.getElementById("progress-board").classList.toggle("quota-met", met);
 }
-setProgressUI(progress);
 
+// แถวของ game_rooms จาก realtime → ข้อมูลโควต้า
+function quotaInfoFromRow(row) {
+  const m = /^q:(\d+):(\d+)$/.exec(row[QUOTA_STATE_COLUMN] || "");
+  const day = m ? Number(m[1]) : 0;
+  const step = m ? Number(m[2]) : 0;
+  return {
+    day,
+    delivered: row.progress || 0,
+    quota: DAILY_QUOTA[Math.min(day, DAILY_QUOTA.length - 1)],
+    heatPerWrong: HEAT_STEPS[Math.min(step, HEAT_STEPS.length - 1)],
+  };
+}
+
+// แถบโควต้าโชว์ตลอดตอนเล่น
 function showProgressBoard() {
-  const board = document.getElementById("progress-board");
-  if (!board) return;
-
-  board.classList.add("visible");
-
-  clearTimeout(progressHideTimeout);
-  progressHideTimeout = setTimeout(() => {
-    board.classList.remove("visible");
-  }, PROGRESS_DISPLAY_MS);
+  document.getElementById("progress-board").classList.add("visible");
 }
 
-function updateProgress(delta) {
-  progress = Math.min(100, Math.max(0, progress + delta));
-  setProgressUI(progress);
-
-  fetch("/api/game/updateProgress", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ roomId: currentRoomId, progress: progress }),
-  });
-  myQuest = null;
-}
-
-// เรียกจากฝั่ง Unity (ผ่าน WebGLBridge.jslib) ทุกครั้งที่มีคนกด E เอาบอลให้ NPC
-// ballName ที่ Unity ส่งมาคือชื่อ Object ของลูกบอล เช่น "GreenBall" หรือ "RedBall"
-window.OnBallSubmitted = function (ballName) {
-  console.log("Unity ส่งบอลมาที่เว็บ:", ballName);
-
+// ===== ส่งบอลให้ NPC (Unity → เว็บ ผ่าน WebGLBridge.jslib) =====
+// ballName คือชื่อ Object ของลูกบอล เช่น "GreenBall(Clone)" หรือ "RedBall(Clone)"
+// แจ้ง server ว่าบอลถึง NPC แล้ว — บอลเขียวนับโควต้าวันนี้ +1 (บอลแดงไม่นับ)
+async function applyBallProgress(ballName) {
   const name = (ballName || "").toLowerCase();
-
-  if (name.includes("green")) {
-    updateProgress(PROGRESS_INCREMENT_DECREMENT);
-    showProgressBoard();
-  } else if (name.includes("red")) {
-    updateProgress(-(PROGRESS_INCREMENT_DECREMENT / 2));
-    showProgressBoard();
-  } else {
-    console.warn(
-      "[OnBallSubmitted] ไม่รู้จักชนิดของลูกบอล (ไม่มีคำว่า green/red ในชื่อ):",
-      ballName,
-    );
+  const color = name.includes("green") ? "green" : name.includes("red") ? "red" : null;
+  if (!color) {
+    console.warn("[ball] ไม่รู้จักชนิดของลูกบอล (ไม่มีคำว่า green/red ในชื่อ):", ballName);
+    return;
   }
+  try {
+    const res = await fetch("/api/game/ball-delivered", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: currentRoomId, color }),
+    });
+    if (res.ok) setQuotaUI(await res.json());
+  } catch (err) {
+    console.error("ball-delivered error:", err);
+  }
+}
+
+// Unity: บอลที่ "เรา" submit ได้ถูกส่งให้ NPC แล้ว (เราส่งเอง หรือเพื่อนถือไปส่งแทน — ItemThrower.BallDeliveredRPC)
+// → เคลียร์โจทย์ค้าง ให้สุ่มโจทย์ใหม่ได้ + อัปเดต progress
+window.OnMyBallDelivered = function (ballName) {
+  console.log("บอลของเราถูกส่งให้ NPC แล้ว:", ballName);
+  applyBallProgress(ballName);
+  myQuest = null;
+};
+
+// Unity: เราส่งบอลของคนที่ออกจากห้องไปแล้ว → อัปเดต progress แทนเขา (ไม่แตะโจทย์ของเรา)
+window.OnBallSubmitted = function (ballName) {
+  console.log("ส่งบอลแทนคนที่ออกจากห้องแล้ว:", ballName);
+  applyBallProgress(ballName);
 };
 
 let myScore = 0;
@@ -244,6 +265,7 @@ async function refreshHeat() {
     if (!res.ok) return;
     const data = await res.json();
     setHeatUI(data.heat);
+    if (typeof data.quota === "number") setQuotaUI(data);
     if (typeof data.score === "number" && data.score !== myScore) setScoreUI(data.score);
   } catch (err) {
     console.error("refreshHeat error:", err);
@@ -251,6 +273,7 @@ async function refreshHeat() {
 }
 
 function startHeatPolling() {
+  showProgressBoard();
   if (heatPollTimer) return;
   refreshHeat();
   // ค่าหลักมาทาง realtime แล้ว — poll ไว้สำรอง (เผื่อ realtime หลุด) และอัปเดตคะแนนของเรา
@@ -923,6 +946,8 @@ async function subscribeGameStatus(roomId) {
         if (newStatus === "playing" && typeof payload.new?.[HEAT_COLUMN] === "number") {
           setHeatUI(payload.new[HEAT_COLUMN]);
         }
+        // โควต้ารายวัน (progress) ก็อยู่ใน game_rooms → ทุกคนเห็นเท่ากันทันที
+        if (newStatus === "playing" && payload.new) setQuotaUI(quotaInfoFromRow(payload.new));
         if (newStatus === "finished" && !isGameEnded) {
           isGameEnded = true;
           if (countdownInterval) clearInterval(countdownInterval);
