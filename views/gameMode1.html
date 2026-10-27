@@ -121,10 +121,11 @@
           box-shadow: 0 0 30px rgba(255, 121, 198, 0.4);
         "
       >
-        <h1 style="color: #ff79c6; font-size: 40px; margin-top: 0">
+        <!-- หัวข้อเปลี่ยนตามเหตุผลที่เกมจบ (gameMode1.js endGame): หมดเวลา / งานเสร็จ / server overheat -->
+        <h1 id="summary-title" style="color: #ff79c6; font-size: 40px; margin-top: 0">
           Time's Up!
         </h1>
-        <h2 style="color: #d7d7d7">สรุปผลการแข่งขัน</h2>
+        <h2 id="summary-subtitle" style="color: #d7d7d7">สรุปผลการแข่งขัน</h2>
         <p style="font-size: 24px">
           คะแนนที่ทำได้:
           <span id="final-score" style="color: #50fa7b; font-weight: bold"

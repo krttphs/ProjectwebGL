@@ -27,13 +27,10 @@ async function finishQuest(roomId, playerId, questId, delta) {
 }
 
 // ===== Server Heat (ค่าความร้อนของทั้งห้อง 0-100) =====
-// submit ผิด / ยอมแพ้ (ได้ red ball) +10, ครบ 100 = overheat:
-//   ทั้งห้อง submit ไม่ได้ + ทุกคนโดนหักคะแนนเรื่อยๆ จนกว่าจะมีคนทำ mini game ที่ server terminal (heat กลับเป็น 0)
-//   mini game ทำได้ทุกเมื่อที่ heat > 0 (ไม่ต้องรอ overheat)
+// submit ผิด / ยอมแพ้ (ได้ red ball) +10, ครบ 100 = overheat → เกมจบทันที "You got fired" (ไม่ได้เหรียญ)
+//   ลด heat ได้ด้วย mini game ที่ server terminal (heat กลับเป็น 0) — ทำได้ทุกเมื่อที่ heat > 0
 const HEAT_PER_WRONG = 10;
 const HEAT_MAX = 100;
-const HEAT_PENALTY_POINTS = 5; // คะแนนที่หักต่อรอบ ตอน overheat
-const HEAT_PENALTY_INTERVAL_MS = 10 * 1000;
 const COOLING_COMMAND_COUNT = 5;
 const COOLING_TIME_LIMIT_S = 40;
 const COOLING_COMMANDS = [
@@ -49,63 +46,80 @@ const COOLING_COMMANDS = [
   "reboot --safe",
 ];
 
-// heat เก็บในหน่วยความจำของ server (ไม่ต้องเพิ่มคอลัมน์ใน DB)
-// server เป็น process เดียว การบวก/ลบจึงไม่ชนกัน — ถ้า server restart กลางเกม heat จะกลับเป็น 0
-const roomHeat = new Map(); // roomId -> heat (0-100)
+// heat เก็บใน DB → ทุกคนในห้องเห็นค่าเดียวกัน แม้ต่อเข้า server คนละตัว (แบบเดียวกับ timer / day)
+// และหน้าเว็บได้ค่าใหม่ทันทีผ่าน realtime ของ game_rooms
+// ⚠️ ไม่ได้เพิ่มคอลัมน์ใหม่ (ไม่ใช้ SQL): ใช้คอลัมน์ game_rooms.max_players ที่ไม่ได้ถูกใช้ (เดิมเป็น 4 ทุกห้อง)
+//    เก็บค่า heat แทน — เปลี่ยนที่เดียวตรง HEAT_COLUMN (หน้าเว็บ gameMode1.js ใช้ชื่อเดียวกัน)
+const HEAT_COLUMN = "max_players";
 
-function getHeat(roomId) {
-  return roomHeat.get(roomId) || 0;
+function heatOf(room) {
+  return Number(room?.[HEAT_COLUMN]) || 0;
 }
 
-function addRoomHeat(roomId, amount, reason) {
-  const before = getHeat(roomId);
-  const heat = Math.min(HEAT_MAX, Math.max(0, before + amount));
-  roomHeat.set(roomId, heat);
-  console.log(`[heat] room ${roomId}: ${before} -> ${heat} (${reason})`);
-  return heat;
-}
-
-async function getRoomStatus(roomId) {
+async function getRoom(roomId) {
   const { data, error } = await supabase
     .from("game_rooms")
-    .select("status")
+    .select(`status, ${HEAT_COLUMN}`)
     .eq("id", roomId)
     .maybeSingle();
   if (error) throw error;
-  return data?.status ?? null;
+  return data;
 }
 
-// overheat → หักคะแนนทุกคนในห้องที่ร้อนเกิน (ไม่ต่ำกว่า 0) / ห้องที่จบแล้วล้างทิ้ง
-async function applyHeatPenalty() {
-  for (const [roomId, heat] of roomHeat) {
-    const status = await getRoomStatus(roomId);
-    if (status !== "playing") {
-      if (status !== "loading") roomHeat.delete(roomId);
-      continue;
-    }
-    if (heat < HEAT_MAX) continue;
+// จบเพราะ server overheat = โดนไล่ออก (ห้องจบแล้ว และ heat ค้างที่ 100)
+function isFired(room) {
+  return !!room && room.status === "finished" && heatOf(room) >= HEAT_MAX;
+}
 
-    const { data: players, error } = await supabase
-      .from("room_players")
-      .select("player_id, score")
-      .eq("room_id", roomId)
-      .gt("score", 0);
+// เพิ่ม/ลด heat — ถ้าแตะ 100 = server overheat → จบเกมทั้งห้อง (fired)
+// compare-and-swap: อัปเดตเฉพาะเมื่อค่ายังเท่าเดิม ถ้าคนอื่นเปลี่ยนไปก่อนก็อ่านใหม่แล้วลองอีกรอบ
+// (กันหลายคน submit ผิดพร้อมกันแล้วค่าหาย โดยไม่ต้องเขียน SQL function)
+async function addRoomHeat(roomId, amount, reason) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const room = await getRoom(roomId);
+    if (!room || room.status !== "playing") return heatOf(room); // เกมไม่ได้เล่นอยู่ → ไม่เปลี่ยน
+
+    const before = heatOf(room);
+    const heat = Math.min(HEAT_MAX, Math.max(0, before + amount));
+    const { data: updated, error } = await supabase
+      .from("game_rooms")
+      .update({ [HEAT_COLUMN]: heat })
+      .eq("id", roomId)
+      .eq("status", "playing")
+      .eq(HEAT_COLUMN, room[HEAT_COLUMN])
+      .select("id");
     if (error) throw error;
+    if (!updated || updated.length === 0) continue; // มีคนแก้ก่อน → ลองใหม่
 
-    for (const p of players || []) {
-      const { error: updErr } = await supabase
-        .from("room_players")
-        .update({ score: Math.max(0, p.score - HEAT_PENALTY_POINTS) })
-        .eq("room_id", roomId)
-        .eq("player_id", p.player_id);
-      if (updErr) throw updErr;
-    }
+    console.log(`[heat] room ${roomId}: ${before} -> ${heat} (${reason})`);
+    if (before < HEAT_MAX && heat >= HEAT_MAX) await fireRoom(roomId);
+    return heat;
   }
+  throw new Error("heat update conflict, please retry");
 }
 
-setInterval(() => {
-  applyHeatPenalty().catch((err) => console.error("Heat penalty error:", err.message));
-}, HEAT_PENALTY_INTERVAL_MS).unref();
+async function fireRoom(roomId) {
+  const { data: room, error } = await supabase
+    .from("game_rooms")
+    .select("status, end_time, morning_time, noon_time, evening_time, day_count")
+    .eq("id", roomId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!room || room.status !== "playing") return;
+
+  // เล่นไปได้จริงกี่วินาที (เวลาเต็ม - เวลาที่เหลือ)
+  const total = gameDurationSeconds(room);
+  const remaining = room.end_time ? Math.max(0, (new Date(room.end_time) - Date.now()) / 1000) : 0;
+  const played = Math.max(0, Math.round(total - remaining));
+
+  const { error: updErr } = await supabase
+    .from("game_rooms")
+    .update({ status: "finished", duration_time: played })
+    .eq("id", roomId)
+    .eq("status", "playing");
+  if (updErr) throw updErr;
+  console.log(`[heat] room ${roomId}: SERVER OVERHEAT → game over (fired) after ${played}s`);
+}
 
 // mini game ที่ออกให้แต่ละคน (เก็บในหน่วยความจำพอ: หลุดแล้วขอใหม่ได้)
 const coolingChallenges = new Map(); // `${roomId}:${userId}` -> { commands, issuedAt }
@@ -149,12 +163,17 @@ router.post("/endgame/:roomId", requireAuth, async (req, res) => {
 
     const { data: room, error: roomError } = await supabase
       .from("game_rooms")
-      .select("status, end_time, morning_time, noon_time, evening_time, day_count")
+      .select(`status, end_time, morning_time, noon_time, evening_time, day_count, progress, ${HEAT_COLUMN}`)
       .eq("id", roomId)
       .single();
 
     if (roomError || !room) {
       return res.status(404).json({ error: "Room not found" });
+    }
+
+    // server overheat → โดนไล่ออก: เกมจบ ไม่ได้เหรียญ
+    if (isFired(room)) {
+      return res.json({ success: true, reason: "fired" });
     }
 
     const isTimeUp = new Date() >= new Date(room.end_time);
@@ -185,7 +204,9 @@ router.post("/endgame/:roomId", requireAuth, async (req, res) => {
 
     if (rewardError) throw rewardError;
 
-    res.json({ success: true, result: rewardData });
+    // เหตุผลที่เกมจบ ให้หน้าสรุปขึ้นข้อความถูก (progress ครบ 100 = งานเสร็จก่อนเวลา)
+    const reason = (room.progress ?? 0) >= 100 ? "completed" : "timeup";
+    res.json({ success: true, result: rewardData, reason });
   } catch (err) {
     console.error("End game error:", err);
     res.status(500).json({ error: err.message });
@@ -241,7 +262,7 @@ async function tryStartGame(roomId) {
 
     await supabase
       .from("game_rooms")
-      .update({ status: "playing", end_time: timeEnd })
+      .update({ status: "playing", end_time: timeEnd, [HEAT_COLUMN]: 0 }) // เริ่มเกม heat = 0
       .eq("id", roomId)
       .eq("status", "loading");
   }
@@ -368,17 +389,20 @@ router.post("/giveup", requireAuth, async (req, res) => {
       return res.status(409).json({ error: "โจทย์นี้จบไปแล้ว" });
     }
     // ยอมแพ้ = ได้ red ball → server ร้อนขึ้น
-    const heat = addRoomHeat(roomId, HEAT_PER_WRONG, "give up");
+    const heat = await addRoomHeat(roomId, HEAT_PER_WRONG, "give up");
     res.json({ score, heat });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/game/heat/:roomId — ค่า heat ของห้อง + คะแนนของเรา (overheat แล้วคะแนนลดเรื่อยๆ)
+// GET /api/game/heat/:roomId — ค่า heat ของห้อง (จาก DB) + คะแนนของเรา
 router.get("/heat/:roomId", requireAuth, async (req, res) => {
   try {
     const { roomId } = req.params;
+    const room = await getRoom(roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+
     const { data: me, error } = await supabase
       .from("room_players")
       .select("score")
@@ -387,7 +411,7 @@ router.get("/heat/:roomId", requireAuth, async (req, res) => {
       .maybeSingle();
     if (error) throw error;
 
-    res.json({ heat: getHeat(roomId), maxHeat: HEAT_MAX, score: me?.score ?? null });
+    res.json({ heat: heatOf(room), maxHeat: HEAT_MAX, score: me?.score ?? null });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -397,11 +421,12 @@ router.get("/heat/:roomId", requireAuth, async (req, res) => {
 router.post("/heat/challenge", requireAuth, async (req, res) => {
   try {
     const { roomId } = req.body || {};
-    if ((await getRoomStatus(roomId)) !== "playing") {
+    const room = await getRoom(roomId);
+    if (!room || room.status !== "playing") {
       return res.status(409).json({ error: "เกมยังไม่เริ่ม หรือจบไปแล้ว" });
     }
     // ระบายความร้อนได้ทุกเมื่อที่ heat > 0 (ไม่ต้องรอให้ overheat)
-    const heat = getHeat(roomId);
+    const heat = heatOf(room);
     if (heat <= 0) {
       return res.status(409).json({ error: "Server ยังเย็นอยู่ ไม่ต้องระบายความร้อน", heat });
     }
@@ -434,7 +459,7 @@ router.post("/heat/cool", requireAuth, async (req, res) => {
     if (!correct) return res.status(400).json({ error: "คำสั่งไม่ถูกต้อง ลองใหม่อีกครั้ง" });
 
     // คนแรกที่ทำสำเร็จเป็นคนลด (ถ้ามีคนลดไปแล้วก็ถือว่าสำเร็จเหมือนกัน)
-    addRoomHeat(roomId, -HEAT_MAX, "cooled by mini game");
+    await addRoomHeat(roomId, -HEAT_MAX, "cooled by mini game");
     res.json({ success: true, heat: 0 });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -537,13 +562,9 @@ router.post("/submissions", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "ส่งได้เฉพาะเจ้าของเครื่อง" });
     }
 
-    // server overheat → ทั้งห้อง submit ไม่ได้จนกว่าจะมีคนลด heat (Run ยังได้)
-    if (type === "submit" && getHeat(roomId) >= HEAT_MAX) {
-      return res.status(423).json({
-        error: "Server ร้อนเกินไป! ไปที่ Server Terminal เพื่อลดความร้อนก่อน",
-        overheated: true,
-        heat: getHeat(roomId),
-      });
+    // server overheat ไปแล้ว = เกมจบ (fired) → ส่งงานต่อไม่ได้
+    if (type === "submit" && isFired(await getRoom(roomId))) {
+      return res.status(409).json({ error: "Server overheat — เกมจบแล้ว", fired: true });
     }
 
     const sendSubmitResult = async (success, status) => {
@@ -557,7 +578,7 @@ router.post("/submissions", requireAuth, async (req, res) => {
         return res.status(409).json({ error: "โจทย์นี้ถูกส่งไปแล้ว" });
       }
       // ผิด = ได้ red ball → server ร้อนขึ้น (ถูกไม่เพิ่ม)
-      const heat = success ? getHeat(roomId) : addRoomHeat(roomId, HEAT_PER_WRONG, "wrong submit");
+      const heat = success ? heatOf(await getRoom(roomId)) : await addRoomHeat(roomId, HEAT_PER_WRONG, "wrong submit");
       return res.json({ success, status, score, heat });
     };
 

@@ -187,6 +187,7 @@ function setScoreUI(score) {
 
 // ===== Server Heat (ค่าของทั้งห้อง: submit ผิด +10, ครบ 100 = overheat) =====
 const HEAT_MAX = 100;
+const HEAT_COLUMN = "max_players"; // คอลัมน์ใน game_rooms ที่ใช้เก็บ heat (ตรงกับ routes/game.js)
 let roomHeat = 0;
 let heatPollTimer = null;
 
@@ -209,11 +210,11 @@ function renderHeatWarning() {
     el.append("🔥 SERVER OVERHEAT!");
     const detail = document.createElement("small");
     detail.textContent =
-      "Submit ถูกล็อก และคะแนนทุกคนกำลังลดลง — ไปที่ Server Terminal เพื่อระบายความร้อน";
+      "Server พัง — เกมจบ You got fired";
     el.appendChild(detail);
   } else if (roomHeat >= HEAT_WARNING) {
     el.classList.add("warn");
-    el.append(`⚠️ Server เริ่มร้อนแล้ว (${roomHeat}%) — ระวัง submit ผิด`);
+    el.append(`⚠️ Server เริ่มร้อนแล้ว (${roomHeat}%) — ถึง 100% = โดนไล่ออก! ไประบายความร้อนที่ Server Terminal`);
   }
 }
 
@@ -229,15 +230,13 @@ function setHeatUI(heat) {
     unityInstance.SendMessage("ServerHeatFX", "SetHeat", String(roomHeat));
   }
 
-  // overheat → ทั้งห้อง submit ไม่ได้ (Run ยังได้) — server ก็บล็อกซ้ำอีกชั้น
-  const btn = document.getElementById("submitBtn");
-  btn.disabled = overheated;
-  btn.title = overheated ? "Server ร้อนเกินไป ไประบายความร้อนที่ Server Terminal ก่อน" : "";
+  // overheat = server พัง → เกมจบทั้งห้อง (fired) — server เปลี่ยนสถานะห้องแล้ว จบฝั่งเราเลยไม่ต้องรอ realtime
+  if (overheated && isGameStarted) endGame();
 
   if (terminalOpen && !coolingChallenge) renderTerminalIdle();
 }
 
-// ดึง heat + คะแนนของเราเป็นระยะ (ตอน overheat คะแนนถูกหักฝั่ง server เรื่อยๆ)
+// ดึง heat (จาก DB) + คะแนนของเราเป็นระยะ — สำรองไว้เผื่อ realtime หลุด
 async function refreshHeat() {
   if (!currentRoomId) return;
   try {
@@ -254,7 +253,8 @@ async function refreshHeat() {
 function startHeatPolling() {
   if (heatPollTimer) return;
   refreshHeat();
-  heatPollTimer = setInterval(refreshHeat, 2000);
+  // ค่าหลักมาทาง realtime แล้ว — poll ไว้สำรอง (เผื่อ realtime หลุด) และอัปเดตคะแนนของเรา
+  heatPollTimer = setInterval(refreshHeat, 5000);
 }
 
 function stopHeatPolling() {
@@ -918,6 +918,11 @@ async function subscribeGameStatus(roomId) {
           document.getElementById("waiting-screen").style.display = "none";
           startTimer();
         }
+        // heat อยู่ใน game_rooms → ทุกคนในห้องได้ค่าใหม่พร้อมกันทันที (แบบเดียวกับ timer / day)
+        // เก็บในคอลัมน์ max_players (ดู HEAT_COLUMN ใน routes/game.js) — อ่านเฉพาะตอนเกมเล่นอยู่ (ก่อนเริ่มยังเป็น 4)
+        if (newStatus === "playing" && typeof payload.new?.[HEAT_COLUMN] === "number") {
+          setHeatUI(payload.new[HEAT_COLUMN]);
+        }
         if (newStatus === "finished" && !isGameEnded) {
           isGameEnded = true;
           if (countdownInterval) clearInterval(countdownInterval);
@@ -1232,7 +1237,18 @@ function renderFinalDayAwards(result) {
   box.style.display = "block";
 }
 
+// หัวข้อหน้าสรุปตามเหตุผลที่เกมจบ (server ส่ง reason มาจาก /api/game/endgame)
+const END_SCREENS = {
+  timeup: { title: "Time's Up!", subtitle: "สรุปผลการแข่งขัน", color: "#ff79c6" },
+  completed: { title: "Project Complete!", subtitle: "ทีมทำงานครบ 100% ก่อนหมดเวลา", color: "#50fa7b" },
+  fired: { title: "SERVER OVERHEAT", subtitle: "🔥 YOU GOT FIRED 🔥", color: "#ff5555" },
+};
+
+let endGameShown = false;
+
 async function endGame() {
+  if (endGameShown) return; // เรียกได้หลายทาง (หมดเวลา / realtime / overheat) → แสดงครั้งเดียว
+  endGameShown = true;
   try {
     isGameEnded = true;
     clearInterval(heartbeatTimer);
@@ -1242,10 +1258,15 @@ async function endGame() {
     const res = await fetch(`/api/game/endgame/${currentRoomId}`, {
       method: "POST",
     });
-    if (!res.ok) {
-      const data = await res.json();
-      console.log("Error:", data.error);
-    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) console.log("Error:", data.error);
+    const reason = data.reason || (isOverheated() ? "fired" : "timeup");
+
+    const screen = END_SCREENS[reason] || END_SCREENS.timeup;
+    const title = document.getElementById("summary-title");
+    title.textContent = screen.title;
+    title.style.color = screen.color;
+    document.getElementById("summary-subtitle").textContent = screen.subtitle;
 
     document.getElementById("timer-display").innerText = "00:00";
 
@@ -1258,7 +1279,8 @@ async function endGame() {
     const finalScore = myScore;
     document.getElementById("final-score").innerText = finalScore;
 
-    const coinsEarned = finalScore > 0 ? finalScore : 0;
+    // โดนไล่ออก (server overheat) = ไม่ได้เหรียญ
+    const coinsEarned = reason === "fired" ? 0 : finalScore > 0 ? finalScore : 0;
     document.getElementById("final-coins").innerText = coinsEarned;
 
     document.getElementById("summary-modal").style.display = "flex";
