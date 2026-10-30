@@ -210,7 +210,7 @@ async function loadLangs() {
         body.appendChild(tr);
     });
 
-    // ยังมีภาษาที่กำลังติดตั้ง → โหลดสถานะใหม่ทุก 5 วินาที
+    // ยังมีภาษาที่กำลังติดตั้ง -> โหลดสถานะใหม่ทุก 5 วินาที
     if (langs.some((l) => l.judge_status === 'pulling')) {
         langPoll = setTimeout(loadLangs, 5000);
     }

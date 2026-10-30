@@ -1,3 +1,10 @@
+//ถ้าปลดล็อกเมาส์ไปแล้ว (กด ESC หรือ exitPointerLock()) แล้วขอล็อกใหม่ภายในประมาณ 1 วินาที Chrome จะปฏิเสธ เลยใส่ไว้กัน alert
+const _requestPointerLock = Element.prototype.requestPointerLock;
+Element.prototype.requestPointerLock = function (...args) {
+  const result = _requestPointerLock.apply(this, args);
+  return result && result.catch ? result.catch(() => {}) : result;
+};
+
 var canvas = document.querySelector("#unity-canvas");
 var unityInstance = null; // เก็บ instance ไว้ใช้ภายนอก
 
@@ -21,7 +28,7 @@ document.querySelector("#unity-loading-bar").style.display = "block";
 const urlParams = new URLSearchParams(window.location.search);
 const currentRoomId = urlParams.get("roomId");
 
-// heartbeat บอก server ว่ายังอยู่ในเกม (ทุกคนปิดแท็บ → server ปิดห้องให้อัตโนมัติ)
+// heartbeat บอก server ว่ายังอยู่ในเกม (ทุกคนปิดแท็บ -> server ปิดห้องให้อัตโนมัติ)
 // เริ่มส่งตั้งแต่ก่อนโหลด Unity เสร็จ เพราะไฟล์เกมใหญ่ โหลดนาน
 function sendHeartbeat(leaving = false) {
   if (!currentRoomId) return;
@@ -126,8 +133,8 @@ window.addEventListener("resize", () => {
 let PROGRESS_INCREMENT_DECREMENT = 0;
 
 // ===== Progress = โควต้ารายวันของทั้งห้อง =====
-// ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน (3 / 5 / 7 / 8 / 9 / 10 / 12) — ไม่ครบ → heat ต่อการส่งผิดขึ้นขั้น
-// ค่าอยู่ใน DB (routes/game.js) → ทุกคนเห็นเท่ากัน: ได้ทันทีผ่าน realtime ของ game_rooms + poll /heat สำรอง
+// ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน (3 / 5 / 7 / 8 / 9 / 10 / 12) — ไม่ครบ -> heat ต่อการส่งผิดขึ้นขั้น
+// ค่าอยู่ใน DB (routes/game.js) -> ทุกคนเห็นเท่ากัน: ได้ทันทีผ่าน realtime ของ game_rooms + poll /heat สำรอง
 const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12]; // ตรงกับ routes/game.js
 const HEAT_STEPS = [10, 20, 40, 80, 100];
 const QUOTA_STATE_COLUMN = "difficulty"; // "q:<วัน>:<ขั้น heat>" (ตรงกับ routes/game.js)
@@ -146,7 +153,7 @@ function setQuotaUI(info) {
   document.getElementById("progress-board").classList.toggle("quota-met", met);
 }
 
-// แถวของ game_rooms จาก realtime → ข้อมูลโควต้า
+// แถวของ game_rooms จาก realtime -> ข้อมูลโควต้า
 function quotaInfoFromRow(row) {
   const m = /^q:(\d+):(\d+)$/.exec(row[QUOTA_STATE_COLUMN] || "");
   const day = m ? Number(m[1]) : 0;
@@ -164,7 +171,7 @@ function showProgressBoard() {
   document.getElementById("progress-board").classList.add("visible");
 }
 
-// ===== ส่งบอลให้ NPC (Unity → เว็บ ผ่าน WebGLBridge.jslib) =====
+// ===== ส่งบอลให้ NPC (Unity -> เว็บ ผ่าน WebGLBridge.jslib) =====
 // ballName คือชื่อ Object ของลูกบอล เช่น "GreenBall(Clone)" หรือ "RedBall(Clone)"
 // แจ้ง server ว่าบอลถึง NPC แล้ว — บอลเขียวนับโควต้าวันนี้ +1 (บอลแดงไม่นับ)
 async function applyBallProgress(ballName) {
@@ -187,14 +194,14 @@ async function applyBallProgress(ballName) {
 }
 
 // Unity: บอลที่ "เรา" submit ได้ถูกส่งให้ NPC แล้ว (เราส่งเอง หรือเพื่อนถือไปส่งแทน — ItemThrower.BallDeliveredRPC)
-// → เคลียร์โจทย์ค้าง ให้สุ่มโจทย์ใหม่ได้ + อัปเดต progress
+// -> เคลียร์โจทย์ค้าง ให้สุ่มโจทย์ใหม่ได้ + อัปเดต progress
 window.OnMyBallDelivered = function (ballName) {
   console.log("บอลของเราถูกส่งให้ NPC แล้ว:", ballName);
   applyBallProgress(ballName);
   myQuest = null;
 };
 
-// Unity: เราส่งบอลของคนที่ออกจากห้องไปแล้ว → อัปเดต progress แทนเขา (ไม่แตะโจทย์ของเรา)
+// Unity: เราส่งบอลของคนที่ออกจากห้องไปแล้ว -> อัปเดต progress แทนเขา (ไม่แตะโจทย์ของเรา)
 window.OnBallSubmitted = function (ballName) {
   console.log("ส่งบอลแทนคนที่ออกจากห้องแล้ว:", ballName);
   applyBallProgress(ballName);
@@ -251,7 +258,7 @@ function setHeatUI(heat) {
     unityInstance.SendMessage("ServerHeatFX", "SetHeat", String(roomHeat));
   }
 
-  // overheat = server พัง → เกมจบทั้งห้อง (fired) — server เปลี่ยนสถานะห้องแล้ว จบฝั่งเราเลยไม่ต้องรอ realtime
+  // overheat = server พัง -> เกมจบทั้งห้อง (fired) — server เปลี่ยนสถานะห้องแล้ว จบฝั่งเราเลยไม่ต้องรอ realtime
   if (overheated && isGameStarted) endGame();
 
   if (terminalOpen && !coolingChallenge) renderTerminalIdle();
@@ -283,13 +290,13 @@ function startHeatPolling() {
 function stopHeatPolling() {
   clearInterval(heatPollTimer);
   heatPollTimer = null;
-  renderHeatWarning(); // isGameEnded แล้ว → ซ่อนป้าย
-  // จบเกม → ปิดเอฟเฟกต์ overheat ใน Unity
+  renderHeatWarning(); // isGameEnded แล้ว -> ซ่อนป้าย
+  // จบเกม -> ปิดเอฟเฟกต์ overheat ใน Unity
   if (unityInstance) unityInstance.SendMessage("ServerHeatFX", "SetHeat", "0");
 }
 
 // ===== Server Terminal: mini game ระบายความร้อน =====
-// เริ่มได้ทุกเมื่อที่ heat > 0: พิมพ์คำสั่งที่โชว์ให้ครบทุกบรรทัดภายในเวลา → heat กลับเป็น 0
+// เริ่มได้ทุกเมื่อที่ heat > 0: พิมพ์คำสั่งที่โชว์ให้ครบทุกบรรทัดภายในเวลา -> heat กลับเป็น 0
 const terminalInput = document.getElementById("terminal-input");
 let coolingChallenge = null; // { commands, answers, step, deadline, timer }
 
@@ -436,7 +443,7 @@ async function submitCoolingChallenge() {
   }
 }
 
-// กด Enter / ปุ่ม Enter → submit form (ฟัง keydown ตรงๆ ไม่ได้ เพราะตัวดักคีย์กัน Unity หยุด event ไว้ที่ window)
+// กด Enter / ปุ่ม Enter -> submit form (ฟัง keydown ตรงๆ ไม่ได้ เพราะตัวดักคีย์กัน Unity หยุด event ไว้ที่ window)
 document.getElementById("terminal-form").addEventListener("submit", (e) => {
   e.preventDefault();
   if (!coolingChallenge) return;
@@ -743,6 +750,8 @@ async function setEditorOpen(open) {
   } else {
     getATaskPanel.classList.add("hidden");
     editorPanel.classList.add("hidden");
+    // คืนเมาส์ให้ Unity ไม่งั้นคลิกเกมไม่ได้ (Unity จะล็อกเมาส์ตอนผู้เล่นคลิก)
+    if (unityCanvas) unityCanvas.style.pointerEvents = "";
   }
 }
 
@@ -756,7 +765,7 @@ window.ShowCodeEditor = async function (dataString) {
     console.log(
       "Unity บอกให้เปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
     );
-    // Server Terminal ไม่ใช่คอมเขียนโค้ด → เปิด mini game ระบายความร้อนเลย
+    // Server Terminal ไม่ใช่คอมเขียนโค้ด -> เปิด mini game ระบายความร้อนเลย
     if (uiType === "terminal") {
       currentObjectType = "terminal";
       setTerminalOpen(true);
@@ -853,7 +862,7 @@ window.HideCodeEditor = function (dataString) {
     "Unity บอกให้ปิด UI ประเภท " + uiType + " ที่เครื่อง: " + objectId,
   );
   currentObjectId = objectId;
-  // กด E ซ้ำที่ server ใน Unity → ปิด Server Terminal (Unity ปลดล็อกตัวละครเองแล้ว)
+  // กด E ซ้ำที่ server ใน Unity -> ปิด Server Terminal (Unity ปลดล็อกตัวละครเองแล้ว)
   if (uiType === "terminal") {
     currentObjectType = "terminal";
     if (terminalOpen) setTerminalOpen(false);
@@ -866,6 +875,12 @@ window.HideCodeEditor = function (dataString) {
     supabase.removeChannel(codingSyncChannel);
     codingSyncChannel = null;
   }
+  // ถอด event ของกล่องโค้ด และเอาเคอร์เซอร์ออก ไม่ให้ปุ่มเดินในเกมพิมพ์ลงกล่อง
+  ["code-part2", "code-part3"].forEach((id) => {
+    const el = document.getElementById(id);
+    el.oninput = null;
+    if (document.activeElement === el) el.blur();
+  });
 };
 
 window.ShowEditorButton = function (dataString) {
@@ -941,13 +956,17 @@ async function subscribeGameStatus(roomId) {
           document.getElementById("waiting-screen").style.display = "none";
           startTimer();
         }
-        // heat อยู่ใน game_rooms → ทุกคนในห้องได้ค่าใหม่พร้อมกันทันที (แบบเดียวกับ timer / day)
+        // heat อยู่ใน game_rooms -> ทุกคนในห้องได้ค่าใหม่พร้อมกันทันที (แบบเดียวกับ timer / day)
         // เก็บในคอลัมน์ max_players (ดู HEAT_COLUMN ใน routes/game.js) — อ่านเฉพาะตอนเกมเล่นอยู่ (ก่อนเริ่มยังเป็น 4)
         if (newStatus === "playing" && typeof payload.new?.[HEAT_COLUMN] === "number") {
           setHeatUI(payload.new[HEAT_COLUMN]);
         }
-        // โควต้ารายวัน (progress) ก็อยู่ใน game_rooms → ทุกคนเห็นเท่ากันทันที
-        if (newStatus === "playing" && payload.new) setQuotaUI(quotaInfoFromRow(payload.new));
+        // โควต้ารายวัน (progress) ก็อยู่ใน game_rooms -> ทุกคนเห็นเท่ากันทันที
+        if (newStatus === "playing" && payload.new) {
+          // Endless โควต้าขึ้นกับจำนวนคนในห้อง คำนวณจากแถวนี้ไม่ได้ -> ถาม server แทน
+          if (payload.new.mode === "endless") refreshHeat();
+          else setQuotaUI(quotaInfoFromRow(payload.new));
+        }
         if (newStatus === "finished" && !isGameEnded) {
           isGameEnded = true;
           if (countdownInterval) clearInterval(countdownInterval);
@@ -972,6 +991,10 @@ async function subscribeGameStatus(roomId) {
 }
 
 let countdownInterval;
+
+let isEndlessGame = false;
+
+const ENDLESS_UNITY_DAY_COUNT = 0;
 
 async function giveUp() {
   const res = await fetch("/api/game/giveup", {
@@ -1027,6 +1050,21 @@ async function startTimer() {
     const res = await fetch(`/api/game/room/${currentRoomId}`);
     if (!res.ok) throw new Error("Fetch time error");
     const roomData = await res.json();
+    isEndlessGame = roomData.mode === "endless";
+
+    // Endless ไม่มีเวลาจบ ไม่ต้องนับถอยหลัง -> บอก Unity เรื่องเวลาแล้วจบตรงนี้
+    // (เกมจบเมื่อ heat ถึง 100 เท่านั้น ซึ่ง setHeatUI / realtime จัดการอยู่แล้ว)
+    if (isEndlessGame) {
+      if (unityInstance) {
+        const elapsed = Math.max(0, (Date.now() - new Date(roomData.started_at).getTime()) / 1000);
+        const timeString =
+          `${roomData.morning_time},${roomData.noon_time},${roomData.evening_time},` +
+          `${ENDLESS_UNITY_DAY_COUNT},${elapsed.toFixed(1)}`;
+        unityInstance.SendMessage("GameManager", "SetupTime", timeString);
+      }
+      return;
+    }
+
     //แปลงเป็น Timestamp
     const endTime = new Date(roomData.end_time).getTime();
 
@@ -1165,6 +1203,7 @@ function setupCodeSync(roomId, computerId, isMine) {
 
   //ส่งข้อมูล Broadcast ออกไปหาเพื่อนเวลาที่เราพิมพ์
   const broadcastCode = (e) => {
+    if (!codingSyncChannel) return;
     codingSyncChannel.send({
       type: "broadcast",
       event: "typing",
@@ -1181,7 +1220,7 @@ function setupCodeSync(roomId, computerId, isMine) {
   part3.oninput = broadcastCode;
 }
 
-// ออกจากเกมกลางคัน → กลับหน้า lobby (คนสุดท้ายออก ห้องจะถูกปิด)
+// ออกจากเกมกลางคัน -> กลับหน้า lobby (คนสุดท้ายออก ห้องจะถูกปิด)
 async function leaveGame() {
   if (document.pointerLockElement) document.exitPointerLock();
   if (!confirm("ออกจากเกมนี้? คะแนนและรางวัลของเกมนี้จะไม่ได้รับ")) return;
@@ -1232,7 +1271,7 @@ function renderFinalDayAwards(result) {
     tag.className = "award-label";
     tag.textContent = label;
     row.appendChild(tag);
-    // ชื่อผู้เล่นมาจากผู้ใช้ → ใส่เป็น textContent กันโดนแทรก HTML
+    // ชื่อผู้เล่นมาจากผู้ใช้ -> ใส่เป็น textContent กันโดนแทรก HTML
     row.appendChild(
       document.createTextNode(
         (players || []).map((p) => `${p.name} (${p.score})`).join(", "),
@@ -1267,12 +1306,13 @@ const END_SCREENS = {
   timeup: { title: "Time's Up!", subtitle: "สรุปผลการแข่งขัน", color: "#ff79c6" },
   completed: { title: "Project Complete!", subtitle: "ทีมทำงานครบ 100% ก่อนหมดเวลา", color: "#50fa7b" },
   fired: { title: "SERVER OVERHEAT", subtitle: "🔥 YOU GOT FIRED 🔥", color: "#ff5555" },
+  endless: { title: "SERVER OVERHEAT", subtitle: "Endless mode จบแล้ว", color: "#ffb86c" },
 };
 
 let endGameShown = false;
 
 async function endGame() {
-  if (endGameShown) return; // เรียกได้หลายทาง (หมดเวลา / realtime / overheat) → แสดงครั้งเดียว
+  if (endGameShown) return; // เรียกได้หลายทาง (หมดเวลา / realtime / overheat) -> แสดงครั้งเดียว
   endGameShown = true;
   try {
     isGameEnded = true;
@@ -1285,13 +1325,18 @@ async function endGame() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) console.log("Error:", data.error);
-    const reason = data.reason || (isOverheated() ? "fired" : "timeup");
+    // ดักไว้เผื่อถ้าถาม server ไม่สำเร็จ เดาเหตุผลจากที่รู้ฝั่งเรา
+    const reason = data.reason || (isEndlessGame ? "endless" : isOverheated() ? "fired" : "timeup");
 
     const screen = END_SCREENS[reason] || END_SCREENS.timeup;
     const title = document.getElementById("summary-title");
     title.textContent = screen.title;
     title.style.color = screen.color;
-    document.getElementById("summary-subtitle").textContent = screen.subtitle;
+    // Endless บอกว่าอยู่รอดได้กี่วัน (server ส่ง daysSurvived มา)
+    document.getElementById("summary-subtitle").textContent =
+      reason === "endless" && typeof data.daysSurvived === "number"
+        ? `อยู่รอดได้ ${data.daysSurvived} วัน`
+        : screen.subtitle;
 
     document.getElementById("timer-display").innerText = "00:00";
 

@@ -50,7 +50,7 @@ router.post("/open",requireAuth, async (req, res) => {
   res.json({ roomId: newRoom.id });
 });
 
-//โหลดประวัติข้อความทั้งหมดใน room เรียงจากเก่า → ใหม่
+//โหลดประวัติข้อความทั้งหมดใน room เรียงจากเก่า -> ใหม่
 router.get("/:roomId/messages", requireAuth,async (req, res) => {
   const { roomId } = req.params;
 

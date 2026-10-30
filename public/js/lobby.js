@@ -474,7 +474,7 @@ async function sendMessage() {
 //realtime ของ supabase
 //unsubscribe ห้องเก่า (ถ้าเปลี่ยนแชท)
 //subscribe ห้องใหม่
-//มีข้อความใหม่ → append ทันที
+//มีข้อความใหม่ -> append ทันที
 let chatChannel = null;
 
 function subscribeChatRealtime(roomId) {
@@ -523,7 +523,7 @@ function appendMessage(msg) {
   const span = document.createElement("span");
   span.className =
     "inline-block bg-white/10 text-white px-3 py-1 rounded-lg max-w-[70%]";
-  span.textContent = msg.message; // ข้อความจากผู้ใช้ → textContent เสมอ
+  span.textContent = msg.message; // ข้อความจากผู้ใช้ -> textContent เสมอ
 
   div.appendChild(span);
   box.appendChild(div);
@@ -572,7 +572,11 @@ let isLeader = false;
 
 async function findMatch() {
   try {
-    const res = await fetch("/api/lobby/find-match", { method: "POST" });
+    const res = await fetch("/api/lobby/find-match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: currentMode }),
+    });
     const data = await res.json();
 
     if (!res.ok) {
@@ -593,7 +597,7 @@ async function findMatch() {
 // เปิดหน้าต่างห้องรอ (waiting room) จากผลของ find-match / create / join
 // data = { roomId, isLeader, playerCount, roomStatus? }
 function enterLobby(data) {
-  // เข้าห้องที่เริ่มเกมไปแล้ว (join กลางเกม) → ไปหน้าเกมเลย ไม่ต้องเปิดห้องรอ
+  // เข้าห้องที่เริ่มเกมไปแล้ว (join กลางเกม) -> ไปหน้าเกมเลย ไม่ต้องเปิดห้องรอ
   if (IN_GAME_STATUSES.includes(data.roomStatus)) {
     goToGame(data.roomId);
     return;
@@ -609,9 +613,15 @@ function enterLobby(data) {
   lobbyModal.classList.remove("hidden");
   requestAnimationFrame(() => lobbyModal.classList.remove("opacity-0"));
 
+  const isEndless = data.mode === "endless";
+  document.getElementById("lobbyModeLabel").textContent =
+    MODE_INFO[data.mode]?.name || MODE_INFO.normal.name;
+  // Endless ล็อกเวลาต่อวันไว้ -> ไม่ต้องให้หัวหน้าเลือก โชว์เป็นข้อความแทน
+  document.getElementById("endless_time_note").classList.toggle("hidden", !isEndless);
+
   if (isLeader) {
     document.getElementById("startGameBtn").classList.remove("hidden");
-    document.getElementById("time_input_area").classList.remove("hidden");
+    document.getElementById("time_input_area").classList.toggle("hidden", isEndless);
     document.getElementById("lobbyStatus").textContent =
       "You are the Room Leader";
   } else {
@@ -636,7 +646,16 @@ const ROOM_STATUS_LABEL = {
   playing: { text: "IN GAME", cls: "bg-gray-500/20 text-gray-300 border-gray-500/40" },
 };
 
-function openRoomBrowser() {
+const MODE_INFO = {
+  normal: { name: "Work office" },
+  endless: { name: "Endless mode" },
+};
+let currentMode = "normal";
+function openRoomBrowser(mode) {
+  currentMode = MODE_INFO[mode] ? mode : "normal";
+  document.getElementById("roomBrowserMode").textContent = MODE_INFO[currentMode].name;
+  document.getElementById("roomList").innerHTML =
+    '<div class="text-center text-gray-500 mt-16">Loading rooms...</div>';
   const modal = document.getElementById("roomBrowserModal");
   modal.classList.remove("hidden");
   requestAnimationFrame(() => modal.classList.remove("opacity-0"));
@@ -668,10 +687,12 @@ function showRoomError(msg) {
 }
 
 async function loadRooms() {
+  const mode = currentMode;
   try {
-    const res = await fetch("/api/lobby/rooms");
+    const res = await fetch(`/api/lobby/rooms?mode=${mode}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "โหลดรายการห้องไม่สำเร็จ");
+    if (mode !== currentMode) return;
     showRoomError("");
     renderRooms(data);
   } catch (err) {
@@ -705,7 +726,7 @@ function renderRooms(data) {
 
   if (!rooms || rooms.length === 0) {
     list.innerHTML =
-      '<div class="text-center text-gray-500 mt-16">ยังไม่มีห้อง<br>กด CREATE ROOM เพื่อเป็นหัวหน้าห้อง</div>';
+      `<div class="text-center text-gray-500 mt-16">ยังไม่มีห้อง ${escapeHtml(MODE_INFO[currentMode].name)}<br>กด CREATE ROOM เพื่อเป็นหัวหน้าห้อง</div>`;
     return;
   }
 
@@ -733,6 +754,9 @@ function renderRooms(data) {
             <div class="flex items-center gap-2">
               <span class="font-bold text-white tracking-wider">#${escapeHtml(r.code)}</span>
               <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${st.cls}">${escapeHtml(st.text)}</span>
+              ${r.mode !== currentMode
+                ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded border bg-red-300/20 text-red-200 border-red-300/40">${escapeHtml(MODE_INFO[r.mode]?.name || r.mode)}</span>`
+                : ""}
             </div>
             <div class="text-xs text-gray-400">
               <i class="fa-solid fa-crown text-yellow-400 mr-1"></i>${escapeHtml(r.leaderName)}
@@ -791,7 +815,11 @@ async function createNewRoom() {
   const btn = document.getElementById("createRoomBtn");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/lobby/create", { method: "POST" });
+    const res = await fetch("/api/lobby/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: currentMode }),
+    });
     const data = await res.json();
     if (!res.ok) {
       showRoomError(data.error || "สร้างห้องไม่สำเร็จ");
@@ -840,11 +868,11 @@ function subscribeRoomBrowser() {
     .channel("room-browser")
     .on("postgres_changes", { event: "*", schema: "public", table: "game_rooms" }, scheduleReload)
     .subscribe();
-  // room_players มองไม่เห็นจาก browser (RLS) → จำนวนคนในห้องรีเฟรชเป็นระยะแทน
+  // room_players มองไม่เห็นจาก browser (RLS) -> จำนวนคนในห้องรีเฟรชเป็นระยะแทน
   roomBrowserPollTimer = setInterval(loadRooms, 5000);
 }
 
-// รีเฟรชหน้าแล้วยังค้างห้องรออยู่ → เปิดห้องเดิมให้อัตโนมัติ
+// รีเฟรชหน้าแล้วยังค้างห้องรออยู่ -> เปิดห้องเดิมให้อัตโนมัติ
 async function resumeMyRoom() {
   try {
     const res = await fetch("/api/lobby/rooms");
@@ -890,7 +918,7 @@ function subscribeLobbyRealtime(roomId) {
     )
     .subscribe();
 
-  // room_players มองไม่เห็นจาก browser (RLS) realtime เลยไม่ยิง → ดึงจำนวนคนจาก server เป็นระยะแทน
+  // room_players มองไม่เห็นจาก browser (RLS) realtime เลยไม่ยิง -> ดึงจำนวนคนจาก server เป็นระยะแทน
   startLobbyPolling(roomId);
 }
 
@@ -908,7 +936,7 @@ function startLobbyPolling(roomId) {
       if (currentLobbyId !== roomId) return;
       document.getElementById("playerCountDisplay").textContent =
         `Players: ${data.count} / 4`;
-      // กันพลาด realtime: หัวหน้ากดเริ่มแล้ว → ไปหน้าเกม
+      // กันพลาด realtime: หัวหน้ากดเริ่มแล้ว -> ไปหน้าเกม
       if (["loading", "playing"].includes(data.status)) goToGame(roomId);
     } catch (err) {
       console.error("Failed to fetch player count", err);
@@ -923,7 +951,7 @@ function stopLobbyPolling() {
   lobbyPollTimer = null;
 }
 
-// ปิดแท็บ/ออกจากหน้า ขณะอยู่ในห้องรอ → บอก server ว่ากำลังจะออก
+// ปิดแท็บ/ออกจากหน้า ขณะอยู่ในห้องรอ -> บอก server ว่ากำลังจะออก
 // (ถ้า refresh แล้วกลับมาทันเวลา ห้องยังอยู่, ถ้าทุกคนหายไป server จะยุบห้องให้)
 window.addEventListener("pagehide", () => {
   if (!currentLobbyId) return;
@@ -935,7 +963,7 @@ window.addEventListener("pagehide", () => {
   );
 });
 
-// ห้องถูกยุบ (หัวหน้าออก) → ปิดหน้าต่างฝั่งเรา ไม่ต้องเรียก /leave ซ้ำ
+// ห้องถูกยุบ (หัวหน้าออก) -> ปิดหน้าต่างฝั่งเรา ไม่ต้องเรียก /leave ซ้ำ
 function onLobbyDissolved() {
   if (!currentLobbyId) return;
   closeLobbyModal();

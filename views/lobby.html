@@ -95,7 +95,7 @@
 
                     <button
                         class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
-                        onclick="openRoomBrowser()">
+                        onclick="openRoomBrowser('normal')">
                         <span>Play</span>
                         <i class="fa-solid fa-play"></i>
                     </button>
@@ -103,25 +103,33 @@
             </div>
 
             <div
-                class="w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative opacity-70 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500 cursor-not-allowed">
-                <div class="absolute inset-0 bg-black/60 z-10 flex flex-col justify-center items-center rounded-3xl">
-                    <i class="fa-solid fa-lock text-4xl text-gray-500 mb-2"></i>
-                    <span class="text-gray-400 font-bold">LOCKED</span>
+                class="game-card group w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden">
+                <div class="absolute flex w-[50%] h-[6%] bg-blue-500 z-99 right-0 rounded-full justify-center items-center mr-3 top-2 md:w-[30%] z-99 cursor-pointer hover:scale-110 transition-transform duration-300"
+                    onclick="howToPlayGM1()">
+                    <h3>How to play</h3>
                 </div>
-
-                <div class="h-[60%] w-full bg-purple-900/50 rounded-2xl mb-4 relative overflow-hidden">
-                    <img src="img/Black_question_mark.png" alt="Space" class="w-full h-full object-cover" />
+                <div
+                    class="h-[60%] w-full bg-blue-900/50 rounded-2xl mb-4 relative overflow-hidden border border-white/10 group-hover:border-cyan-400/50 transition-colors">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80">
+                    </div>
+                    <img src="img/gamemode1.png" alt="gamemode1 img"
+                        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div class="absolute bottom-4 left-4">
+                        <span class="bg-red-300 text-black text-xs font-bold px-2 py-1 rounded">Endless</span>
+                    </div>
                 </div>
 
                 <div class="text-left px-2">
-                    <h3 class="text-3xl font-bold text-gray-300 mb-2">Hardcore mode</h3>
-                    <p class="text-gray-500 text-sm mb-6">
-                        Advanced challenge for true coders. Unlock at Level 5.
-                    </p>
+                    <h3 class="text-3xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
+                        Endless mode
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-6">None stop working!</p>
 
-                    <button disabled
-                        class="w-full py-3 bg-gray-700 rounded-xl font-bold text-gray-400 cursor-not-allowed">
-                        COMING SOON
+                    <button
+                        class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
+                        onclick="openRoomBrowser('endless')">
+                        <span>Play</span>
+                        <i class="fa-solid fa-play"></i>
                     </button>
                 </div>
             </div>
@@ -314,6 +322,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-white">
                         <i class="fa-solid fa-door-open text-cyan-400 mr-2"></i> ROOMS
+                        <span id="roomBrowserMode" class="text-base font-semibold text-cyan-300 ml-1"></span>
                     </h2>
                     <div class="flex items-center gap-3">
                         <span id="roomQuotaDisplay" class="text-sm text-gray-300">- / 5 rooms</span>
@@ -352,6 +361,7 @@
                 <h2 class="text-2xl font-bold text-white mb-4">
                     <i class="fa-solid fa-gamepad text-cyan-400 mr-2"></i> GAME LOBBY
                 </h2>
+                <div id="lobbyModeLabel" class="text-sm font-bold text-red-200 -mt-2 mb-3"></div>
 
                 <div id="lobbyStatus" class="text-cyan-300 mb-6 animate-pulse">
                     Waiting for players...
@@ -387,11 +397,12 @@
                         รวม 5 นาที
                     </div>
                 </div>
-                <button id="startGameBtn" onclick="startGameLobby()"
-                    class="hidden w-full py-3 bg-gradient-to-r from-green-500 to-emerald-400 rounded-xl font-bold text-white shadow-lg shadow-green-500/50 hover:scale-105 transition-all mb-3">
-                    START GAME
-                </button>
-
+                <div id="endless_time_note"
+                    class="hidden w-full mb-6 bg-black/40 p-3 rounded-lg border border-red-300/30 text-sm text-gray-300 text-center">
+                    วันละ 8 นาที · เล่นไปเรื่อยๆ จนกว่า Server จะร้อนถึง 100%
+                </div>
+                <button id="startGameBtn" onclick="startGameLobby()" class="w-full py-2 bg-green-500/20 text-green-400 rounded-xl font-bold border border-green-500/50 hover:bg-green-500 hover:text-white transition-all">Start</button>
+                <br>
                 <button onclick="leaveLobby()"
                     class="w-full py-2 bg-red-500/20 text-red-400 rounded-xl font-bold border border-red-500/50 hover:bg-red-500 hover:text-white transition-all">
                     LEAVE LOBBY

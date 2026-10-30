@@ -17,8 +17,17 @@ const STATUS_ORDER = { waiting: 0, full: 1, loading: 2, playing: 3 };
 const DAY_MINUTE_OPTIONS = [3, 5, 10];
 const DAY_COUNT_OPTIONS = [1, 3, 5, 7];
 
+const GAME_MODES = ["normal", "endless"];
+const DEFAULT_MODE = "normal";
+const ENDLESS_DAY_MINUTES = 8;
+
 // ห้องที่ค้างนานเกินนี้ (หัวหน้าปิดแท็บทิ้ง / ค้าง loading) ถือว่าร้าง ไม่กินโควต้า
 const STALE_ROOM_MS = 2 * 60 * 60 * 1000;
+
+// ค่าที่ส่งมาเป็นโหมดที่รู้จักไหม -> คืนโหมดนั้น / ไม่รู้จัก -> null
+function parseMode(value) {
+  return GAME_MODES.includes(value) ? value : null;
+}
 
 // ห้องร้าง: playing ที่เลย end_time แล้ว หรือห้องที่ยังไม่เริ่มเล่นแต่สร้างไว้นานเกิน STALE_ROOM_MS
 function isStaleRoom(r, now = Date.now()) {
@@ -32,7 +41,7 @@ function isStaleRoom(r, now = Date.now()) {
 async function getActiveRooms() {
   const { data, error } = await supabase
     .from("game_rooms")
-    .select("id, leader_id, status, end_time, created_at")
+    .select("id, leader_id, status, end_time, created_at,mode")
     .in("status", ACTIVE_STATUSES)
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -58,7 +67,7 @@ async function findMyRoom(userId) {
 
   const { data: myRooms, error: roomErr } = await supabase
     .from("game_rooms")
-    .select("id, leader_id, status, created_at, end_time")
+    .select("id, leader_id, status, created_at, end_time,mode")
     .in("id", myRoomIds)
     .in("status", ACTIVE_STATUSES)
     .order("created_at", { ascending: false });
@@ -66,7 +75,7 @@ async function findMyRoom(userId) {
   return (myRooms || []).find((r) => !isStaleRoom(r)) || null;
 }
 
-// ผู้ใช้ค้างห้องอยู่แล้ว: ห้องรอ → พากลับห้องเดิม, อยู่ในเกม → ห้ามเข้า/สร้างห้องใหม่
+// ผู้ใช้ค้างห้องอยู่แล้ว: ห้องรอ -> พากลับห้องเดิม, อยู่ในเกม -> ห้ามเข้า/สร้างห้องใหม่
 async function respondWithMyRoom(res, myRoom, userId) {
   if (IN_GAME_STATUSES.includes(myRoom.status)) {
     return res.status(409).json({
@@ -79,6 +88,7 @@ async function respondWithMyRoom(res, myRoom, userId) {
     roomId: myRoom.id,
     isLeader: myRoom.leader_id === userId,
     playerCount: await countPlayers(myRoom.id),
+    mode: myRoom.mode || DEFAULT_MODE,
     rejoined: true,
   });
 }
@@ -87,7 +97,7 @@ async function respondWithMyRoom(res, myRoom, userId) {
 async function joinRoom(roomId, userId) {
   const { data: room, error } = await supabase
     .from("game_rooms")
-    .select("id, leader_id, status, created_at, end_time")
+    .select("id, leader_id, status, created_at, end_time,mode")
     .eq("id", roomId)
     .maybeSingle();
   if (error) throw error;
@@ -128,14 +138,15 @@ async function joinRoom(roomId, userId) {
       isLeader: room.leader_id === userId,
       playerCount: after,
       roomStatus: room.status,
+      mode: room.mode || DEFAULT_MODE,
     },
   };
 }
 
-async function createRoom(userId) {
+async function createRoom(userId,mode) {
   const { data: newRoom, error: createError } = await supabase
     .from("game_rooms")
-    .insert({ leader_id: userId, status: "waiting" })
+    .insert({ leader_id: userId, status: "waiting",mode })
     .select()
     .single();
 
@@ -176,7 +187,7 @@ async function countPlayers(roomId) {
   return count || 0;
 }
 
-// ===== Heartbeat: ทุกคนปิดแท็บ → ยุบห้องอัตโนมัติ =====
+// ===== Heartbeat: ทุกคนปิดแท็บ -> ยุบห้องอัตโนมัติ =====
 // หน้าห้องรอ/หน้าเกม ส่ง heartbeat มาเป็นระยะ ถ้าทั้งห้องเงียบเกิน HEARTBEAT_TIMEOUT_MS ถือว่าไม่มีใครอยู่แล้ว
 // (เก็บในหน่วยความจำของ server พอ: server restart แล้วทุกคนได้เวลาผ่อนผันใหม่)
 const HEARTBEAT_TIMEOUT_MS = 90 * 1000; // เผื่อแท็บที่อยู่เบื้องหลังโดน browser หน่วง timer
@@ -226,7 +237,7 @@ async function sweepAbandonedRooms() {
   for (const room of rooms) {
     // ดูแลเฉพาะห้องที่ผู้เล่นต่อเข้า server ตัวนี้ (เคยได้ heartbeat) เท่านั้น
     // ถ้ามี server หลายตัวใช้ Supabase เดียวกัน (เช่น เพื่อนรัน dev อีกเครื่อง) server ที่ไม่มีคนต่ออยู่
-    // จะไม่เห็น heartbeat เลย แล้วไปปิดห้องที่ยังเล่นอยู่ของ server อื่น → หน้าเว็บขึ้น Time's Up ก่อนเวลา
+    // จะไม่เห็น heartbeat เลย แล้วไปปิดห้องที่ยังเล่นอยู่ของ server อื่น -> หน้าเว็บขึ้น Time's Up ก่อนเวลา
     if (!heartbeats.has(room.id)) continue;
     const roomPlayers = (players || []).filter((p) => p.room_id === room.id);
     const seen = heartbeats.get(room.id);
@@ -263,15 +274,17 @@ router.post("/heartbeat", requireAuth, (req, res) => {
 
 router.post("/find-match", requireAuth, async (req, res) => {
   const userId = req.user.id;
-
+  const mode = parseMode(req.body?.mode);
+  if(!mode) return res.status(400).json({ error: "Invalid mode" });
   try {
-    // 1. ยังค้างอยู่ในห้องไหนไหม → ห้องรอกลับห้องเดิม, อยู่ในเกมห้ามหาห้องใหม่
+    // 1. ยังค้างอยู่ในห้องไหนไหม -> ห้องรอกลับห้องเดิม, อยู่ในเกมห้ามหาห้องใหม่
     const myRoom = await findMyRoom(userId);
     if (myRoom) return respondWithMyRoom(res, myRoom, userId);
 
     // 2. หาห้องที่ยังมีที่ว่าง: ห้องรอก่อน แล้วค่อยเกมที่กำลังเล่นอยู่ (join กลางเกมได้)
     const active = await getActiveRooms();
     const candidates = active
+      .filter((r) => r.mode === mode)
       .filter((r) => r.status !== "full")
       .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
 
@@ -280,13 +293,13 @@ router.post("/find-match", requireAuth, async (req, res) => {
       if (result.ok) return res.json(result.body);
     }
 
-    // 3. ไม่มีห้องว่าง → สร้างใหม่ (ถ้ายังไม่ชนเพดาน 5 ห้อง)
+    // 3. ไม่มีห้องว่าง -> สร้างใหม่ (ถ้ายังไม่ชนเพดาน 5 ห้อง)
     if (active.length >= MAX_ACTIVE_ROOMS) {
       return res.status(409).json({ error: ROOM_QUOTA_ERROR });
     }
-    const roomId = await createRoom(userId);
+    const roomId = await createRoom(userId,mode);
     if (!roomId) return res.status(409).json({ error: ROOM_QUOTA_ERROR });
-    return res.json({ roomId, isLeader: true, playerCount: 1 });
+    return res.json({ roomId, isLeader: true, playerCount: 1,mode });
   } catch (error) {
     console.error("Find match error:", error);
     return res.status(500).json({ error: "Internal Server Error" });
@@ -297,23 +310,35 @@ router.post("/start", requireAuth, async (req, res) => {
 
   const roomId = req.body.roomId;
   const userId = req.user.id;
+   try {
+  // เช็คโหมดของห้องก่อน
+    const { data: room, error: roomErr } = await supabase
+      .from("game_rooms")
+      .select("mode")
+      .eq("id", roomId)
+      .maybeSingle();
+    if (roomErr) throw roomErr;
+    if (!room) return res.status(404).json({ error: "ไม่พบห้องนี้" });
+    const isEndless = room.mode === "endless";
 
-  // host เลือกได้แค่ค่าที่กำหนด: ความยาว 1 วัน (นาที) และจำนวนวัน
-  const dayMinutes = Number(req.body.day_minutes);
-  const dayCount = Number(req.body.day_count);
-  if (!DAY_MINUTE_OPTIONS.includes(dayMinutes) || !DAY_COUNT_OPTIONS.includes(dayCount)) {
-    return res.status(400).json({
-      error: `เลือกเวลาได้ ${DAY_MINUTE_OPTIONS.join("/")} นาที และ ${DAY_COUNT_OPTIONS.join("/")} วัน`,
-    });
-  }
+    // Endless: ล็อกเวลาต่อวันไว้ (ไม่สนค่าที่ส่งมา) / โหมดปกติ: host เลือกได้แค่ค่าที่กำหนด
+    let dayMinutes = ENDLESS_DAY_MINUTES;
+    let dayCount = 1; // Endless ไม่ใช้จำนวนวัน (เดะ game.js จะจัดการเรื่องไม่มีวันจบ)
+    if (!isEndless) {
+      dayMinutes = Number(req.body.day_minutes);
+      dayCount = Number(req.body.day_count);
+      if (!DAY_MINUTE_OPTIONS.includes(dayMinutes) || !DAY_COUNT_OPTIONS.includes(dayCount)) {
+        return res.status(400).json({
+          error: `เลือกเวลาได้ ${DAY_MINUTE_OPTIONS.join("/")} นาที และ ${DAY_COUNT_OPTIONS.join("/")} วัน`,
+        });
+      }
+    }
 
-  // แบ่ง 1 วันเป็น เช้า 45% / เที่ยง (พัก) 10% / เย็น 45%
-  const daySeconds = dayMinutes * 60;
-  const morning_time = Math.round(daySeconds * 0.45);
-  const evening_time = morning_time;
-  const noon_time = daySeconds - morning_time - evening_time;
-
-  try {
+    // แบ่ง 1 วันเป็น เช้า 45% / เที่ยง (พัก) 10% / เย็น 45%
+    const daySeconds = dayMinutes * 60;
+    const morning_time = Math.round(daySeconds * 0.45);
+    const evening_time = morning_time;
+    const noon_time = daySeconds - morning_time - evening_time;
 
     // เริ่มได้เฉพาะห้องที่ยังรออยู่ (กันกดซ้ำ / เริ่มห้องที่เริ่มไปแล้ว)
     const { data: started, error } = await supabase
@@ -380,11 +405,11 @@ router.delete("/leave", requireAuth, async (req, res) => {
         .eq("room_id", roomId)
         .eq("player_id", userId);
 
-      // คนสุดท้ายออก → ปิดห้อง ไม่ให้ค้างกินโควต้า
+      // คนสุดท้ายออก -> ปิดห้อง ไม่ให้ค้างกินโควต้า
       if ((await countPlayers(roomId)) === 0) {
         await closeEmptyGame(roomId);
       } else if (room.status === "loading") {
-        // คนที่ออกอาจเป็นคนเดียวที่ยังไม่ ready → คนที่เหลือเริ่มเกมได้เลย
+        // คนที่ออกอาจเป็นคนเดียวที่ยังไม่ ready -> คนที่เหลือเริ่มเกมได้เลย
         await tryStartGame(roomId);
       }
 
@@ -433,7 +458,7 @@ router.get("/:roomId/players", requireAuth, async (req, res) => {
 
   try {
 
-    // ห้องถูกยุบแล้ว → 404 ให้หน้าเว็บปิดหน้าต่างห้องรอ
+    // ห้องถูกยุบแล้ว -> 404 ให้หน้าเว็บปิดหน้าต่างห้องรอ
     const { data: room, error: roomErr } = await supabase
       .from("game_rooms")
       .select("status")
@@ -442,7 +467,7 @@ router.get("/:roomId/players", requireAuth, async (req, res) => {
     if (roomErr) throw roomErr;
     if (!room) return res.status(404).json({ error: "Room not found" });
 
-    // หน้าห้องรอเรียก endpoint นี้ทุก 2 วิ → ใช้เป็น heartbeat ไปด้วย
+    // หน้าห้องรอเรียก endpoint นี้ทุก 2 วิ -> ใช้เป็น heartbeat ไปด้วย
     recordHeartbeat(req.params.roomId, req.user.id);
 
     const count = await countPlayers(req.params.roomId);
@@ -467,6 +492,10 @@ router.get("/:roomId/players", requireAuth, async (req, res) => {
 // GET /api/lobby/rooms — รายการห้องที่ใช้งานอยู่ + โควต้า
 router.get("/rooms", requireAuth, async (req, res) => {
   const userId = req.user.id;
+  const mode = req.query.mode === undefined ? null : parseMode(req.query.mode);
+  if (req.query.mode !== undefined && !mode) {
+    return res.status(400).json({ error: "ไม่มีโหมดนี้" });
+  }
   try {
     const rooms = await getActiveRooms();
     const ids = rooms.map((r) => r.id);
@@ -509,6 +538,7 @@ router.get("/rooms", requireAuth, async (req, res) => {
     }
 
     const list = rooms
+      .filter((r) => !mode || r.mode === mode || myRoomIds.has(r.id))
       .map((r) => ({
         id: r.id,
         code: String(r.id).replace(/-/g, "").slice(0, 6).toUpperCase(),
@@ -516,6 +546,7 @@ router.get("/rooms", requireAuth, async (req, res) => {
         playerCount: counts[r.id] || 0,
         maxPlayers: MAX_PLAYERS_PER_ROOM,
         status: r.status,
+        mode: r.mode || DEFAULT_MODE,
         isMine: myRoomIds.has(r.id),
       }))
       .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
@@ -527,6 +558,7 @@ router.get("/rooms", requireAuth, async (req, res) => {
       maxPlayers: MAX_PLAYERS_PER_ROOM,
       myRoomId: myRoom ? myRoom.id : null,
       myRoomStatus: myRoom ? myRoom.status : null,
+      myRoomMode: myRoom ? myRoom.mode || DEFAULT_MODE : null,
     });
   } catch (err) {
     console.error("List rooms error:", err);
@@ -537,8 +569,10 @@ router.get("/rooms", requireAuth, async (req, res) => {
 // POST /api/lobby/create — สร้างห้องใหม่ (ผู้สร้างเป็น leader)
 router.post("/create", requireAuth, async (req, res) => {
   const userId = req.user.id;
+  const mode = parseMode(req.body?.mode);
+  if (!mode) return res.status(400).json({ error: "ไม่มีโหมดนี้" });
   try {
-    // ค้างอยู่ห้องไหนอยู่แล้ว → กลับห้องเดิม / อยู่ในเกมห้ามสร้างซ้ำ
+    // ค้างอยู่ห้องไหนอยู่แล้ว -> กลับห้องเดิม / อยู่ในเกมห้ามสร้างซ้ำ
     const myRoom = await findMyRoom(userId);
     if (myRoom) return respondWithMyRoom(res, myRoom, userId);
 
@@ -547,9 +581,9 @@ router.post("/create", requireAuth, async (req, res) => {
       return res.status(409).json({ error: ROOM_QUOTA_ERROR });
     }
 
-    const roomId = await createRoom(userId);
+    const roomId = await createRoom(userId,mode);
     if (!roomId) return res.status(409).json({ error: ROOM_QUOTA_ERROR });
-    res.json({ roomId, isLeader: true, playerCount: 1 });
+    res.json({ roomId, isLeader: true, playerCount: 1,mode });
   } catch (err) {
     console.error("Create room error:", err);
     res.status(500).json({ error: "Server error" });

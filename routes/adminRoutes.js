@@ -143,7 +143,7 @@ router.get("/languages", async (req, res) => {
   );
 });
 
-// เพิ่มภาษา: บันทึก DB → สั่ง judge ติดตั้ง → ถ้า judge ไม่รับ ลบแถวที่เพิ่งเพิ่มทิ้ง
+// เพิ่มภาษา: บันทึก DB -> สั่ง judge ติดตั้ง -> ถ้า judge ไม่รับ ลบแถวที่เพิ่งเพิ่มทิ้ง
 router.post("/languages", async (req, res) => {
   const row = cleanLang(req.body);
   const msg = validateLang(row);
@@ -162,7 +162,7 @@ router.post("/languages", async (req, res) => {
   res.status(201).json(data);
 });
 
-// แก้ภาษา (หรือกด Retry): อัปเดต DB → ส่งข้อมูลใหม่ให้ judge
+// แก้ภาษา (หรือกด Retry): อัปเดต DB -> ส่งข้อมูลใหม่ให้ judge
 router.put("/languages/:id", async (req, res) => {
   const row = cleanLang(req.body);
   const msg = validateLang(row);
@@ -188,7 +188,7 @@ router.put("/languages/:id", async (req, res) => {
   res.json(data);
 });
 
-// ลบภาษา: ลบจาก DB → บอก judge ให้ลบด้วย
+// ลบภาษา: ลบจาก DB -> บอก judge ให้ลบด้วย
 router.delete("/languages/:id", async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from("languages").delete().eq("id", req.params.id).select("judge0_id").single();
