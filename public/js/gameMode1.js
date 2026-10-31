@@ -97,8 +97,10 @@ let terminalOpen = false;
 function toggleWebUI() {
   if (currentObjectType === "terminal") {
     setTerminalOpen(!terminalOpen);
-  } else {
-    setEditorOpen(!editorOpen);
+  } else if(editorOpen) {
+    notifyUnityEditorClosed();
+  } else if(unityInstance && currentObjectId){
+    unityInstance.SendMessage(currentObjectId, "OpenFromWeb");
   }
 }
 
@@ -719,7 +721,7 @@ async function setEditorOpen(open) {
       }
     }
     btn.textContent = "Close Editor";
-
+    playSfx(sfxOpen);
     if (document.pointerLockElement) {
       document.exitPointerLock();
     }
@@ -750,6 +752,7 @@ async function setEditorOpen(open) {
   } else {
     getATaskPanel.classList.add("hidden");
     editorPanel.classList.add("hidden");
+    playSfx(sfxClose);
     // คืนเมาส์ให้ Unity ไม่งั้นคลิกเกมไม่ได้ (Unity จะล็อกเมาส์ตอนผู้เล่นคลิก)
     if (unityCanvas) unityCanvas.style.pointerEvents = "";
   }
@@ -1358,6 +1361,63 @@ async function endGame() {
     console.error("Unable to end the game: ", err);
   }
 }
+
+const sfxOpen = new Audio("/sfx/editor-open.ogg");
+const sfxClose = new Audio("/sfx/editor-close.ogg");
+sfxOpen.volume = 0.5;
+sfxClose.volume = 0.5;
+
+function playSfx(audio) {
+  audio.currentTime = 0;               // กดรัวๆ ก็เล่นใหม่ตั้งแต่ต้น
+  audio.play().catch(() => {});        // เบราว์เซอร์ไม่ยอมเล่น -> เงียบไป ไม่ error
+}
+
+
+const bgm = new Audio("/bgMusic/zephiramusic-lofi-focus-606303.mp3");
+bgm.loop = true;    // เล่นจบแล้ววนใหม่เอง
+bgm.volume = 0.1;  // เบากว่า SFX (0.5) เพลงจะได้ไม่กลบเสียงอื่น
+
+// จำว่าผู้เล่นปิดเพลงไว้ไหม (เข้าเกมรอบหน้าจะได้ไม่ต้องกดปิดใหม่)
+// ใช้ try เพราะบางเบราว์เซอร์ (เช่นโหมดส่วนตัว) อ่าน localStorage ไม่ได้
+let musicOn = true;
+try {
+  musicOn = localStorage.getItem("musicOn") !== "false";
+} catch (e) {}
+
+function updateMusicButton() {
+  document.getElementById("music-btn").textContent = musicOn ? "🔊 Music" : "🔇 Music";
+}
+
+function startBgm() {
+  if (!musicOn || isGameEnded) return;
+  bgm.play().catch(() => {
+    // เบราว์เซอร์ยังไม่ยอม (ผู้เล่นยังไม่ได้คลิก/กดปุ่ม) -> รอให้ unlockAudio เรียกใหม่
+  });
+}
+
+function toggleMusic() {
+  musicOn = !musicOn;
+  try {
+    localStorage.setItem("musicOn", String(musicOn));
+  } catch (e) {}
+  if (musicOn) startBgm();
+  else bgm.pause();
+  updateMusicButton();
+}
+
+// เบราว์เซอร์ไม่ยอมเล่นเสียงจนกว่าผู้เล่นจะคลิกหรือกดปุ่มในหน้านี้
+// -> รอการกดครั้งแรก แล้วเริ่มเพลง
+function unlockAudio() {
+  startBgm();
+  window.removeEventListener("pointerdown", unlockAudio, true);
+  window.removeEventListener("keydown", unlockAudio, true);
+}
+window.addEventListener("pointerdown", unlockAudio, true);
+window.addEventListener("keydown", unlockAudio, true);
+
+updateMusicButton();
+
+
 // Unity bind keyboard listeners ที่ window ด้วย capture:true
 // วิธีเดียวที่ตัดได้คือดักที่ window capture phase ก่อน Unity
 // แล้วเช็คว่า activeElement เป็น textarea -> stopImmediatePropagation ตัด Unity
