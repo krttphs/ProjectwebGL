@@ -888,3 +888,10 @@ body {
         justify-content: center;
     }
 }
+.credit-section {
+        width: min(1180px, 90%);
+        margin: 0 auto 100px;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
+    }
