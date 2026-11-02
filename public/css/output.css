@@ -291,9 +291,6 @@
   .z-0 {
     z-index: 0;
   }
-  .z-8 {
-    z-index: 8;
-  }
   .z-10 {
     z-index: 10;
   }
@@ -1086,6 +1083,9 @@
   }
   .p-6 {
     padding: calc(var(--spacing) * 6);
+  }
+  .p-90 {
+    padding: calc(var(--spacing) * 90);
   }
   .px-1 {
     padding-inline: calc(var(--spacing) * 1);
