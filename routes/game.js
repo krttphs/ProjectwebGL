@@ -12,8 +12,16 @@ function normalize(s) {
     .trim(); // ตัดบรรทัดว่างหัว-ท้าย
 }
 
-const SCORE_CORRECT = 50;
-const SCORE_WRONG = -25;
+// ตอบถูก = +rewards / ตอบผิดหรือยอมแพ้ = -(rewards x wrongPenaltyRatio)
+const wrongPenaltyRatio = 0.5; // เสียครึ่งหนึ่งของ rewards (เช่น rewards 10 -> ผิด -5)
+
+function correctScore(quest) {
+  return Number(quest?.rewards) || 0;
+}
+
+function wrongScore(quest) {
+  return -Math.round(correctScore(quest) * wrongPenaltyRatio);
+}
 
 async function finishQuest(roomId, playerId, questId, delta) {
   const { data, error } = await supabase.rpc("finish_quest", {
@@ -596,7 +604,15 @@ router.post("/giveup", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "ไม่มีโจทย์ให้ยอมแพ้" });
     }
 
-    const score = await finishQuest(roomId, req.user.id, me.current_quest_id, SCORE_WRONG);
+    // ดึง rewards ของโจทย์ เพื่อคิดคะแนนที่เสีย
+    const { data: quest, error: questErr } = await supabase
+      .from("quests")
+      .select("rewards")
+      .eq("id", me.current_quest_id)
+      .single();
+    if (questErr) throw questErr;
+
+    const score = await finishQuest(roomId, req.user.id, me.current_quest_id, wrongScore(quest));
     if (score === null) {
       return res.status(409).json({ error: "โจทย์นี้จบไปแล้ว" });
     }
@@ -796,12 +812,20 @@ router.post("/submissions", requireAuth, async (req, res) => {
       return res.status(409).json({ error: "Server overheat — เกมจบแล้ว", fired: true });
     }
 
+    //ดึง input / คำตอบ / rewards จาก DB
+    const { data: quest, error: questErr } = await supabase
+      .from("quests")
+      .select("input_run, input_submit, expected_output, rewards")
+      .eq("id", owner.current_quest_id)
+      .single();
+    if (questErr) throw questErr;
+
     const sendSubmitResult = async (success, status) => {
       const score = await finishQuest(
         roomId,
         req.user.id,
         owner.current_quest_id,
-        success ? SCORE_CORRECT : SCORE_WRONG,
+        success ? correctScore(quest) : wrongScore(quest),
       );
       if (score === null) {
         return res.status(409).json({ error: "โจทย์นี้ถูกส่งไปแล้ว" });
@@ -812,14 +836,6 @@ router.post("/submissions", requireAuth, async (req, res) => {
         : await addRoomHeat(roomId, heatPerWrong(await rollQuotaDays(roomId)), "wrong submit");
       return res.json({ success, status, score, heat });
     };
-
-    //ดึง input / คำตอบจาก DB
-    const { data: quest, error: questErr } = await supabase
-      .from("quests")
-      .select("input_run, input_submit, expected_output")
-      .eq("id", owner.current_quest_id)
-      .single();
-    if (questErr) throw questErr;
 
     //ส่งไปให้ judge service รัน
     const stdin = type === "submit" ? quest.input_submit : quest.input_run;

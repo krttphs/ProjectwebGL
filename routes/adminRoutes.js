@@ -37,6 +37,7 @@ router.get("/quests", async (req, res) => {
 router.post("/quests", async (req, res) => {
   const row = questFromBody(req.body);
   if (!row.title || !row.title.trim()) return res.status(400).json({ error: "กรุณากรอกชื่อโจทย์" });
+  if (!row.rewards || isNaN(row.rewards) || row.rewards < 0) return res.status(400).json({ error: "กรุณากรอกรางวัลของโจทย์ให้ถูกต้อง" });
 
   const { data, error } = await supabaseAdmin.from("quests").insert(row).select().single();
   if (error) return res.status(400).json({ error: error.message });
@@ -46,6 +47,7 @@ router.post("/quests", async (req, res) => {
 router.put("/quests/:id", async (req, res) => {
   const row = questFromBody(req.body);
   if (!row.title || !row.title.trim()) return res.status(400).json({ error: "กรุณากรอกชื่อโจทย์" });
+  if (!row.rewards || isNaN(row.rewards) || row.rewards < 0) return res.status(400).json({ error: "กรุณากรอกรางวัลของโจทย์ให้ถูกต้อง" });
 
   const { data, error } = await supabaseAdmin
     .from("quests").update(row).eq("id", req.params.id).select().single();
