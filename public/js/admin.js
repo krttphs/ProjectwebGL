@@ -13,6 +13,8 @@ async function api(method, path, body) {
 }
 
 const $ = (id) => document.getElementById(id);
+
+// ช่องข้อความในฟอร์ม (id ใน HTML คือ q_<ชื่อ> และ l_<ชื่อ>)
 const QUEST_TEXT = ['title', 'description', 'input_run', 'input_submit', 'expected_output',
     'show_expect_output'];
 const LANG_TEXT = ['name', 'image', 'file_name', 'compile_cmd', 'run_cmd'];
@@ -28,13 +30,26 @@ const LANG_PRESETS = [
     { name: 'PHP', judge0_id: 68, image: 'php:8.3-cli', file_name: 'main.php', compile_cmd: '', run_cmd: 'php main.php' },
 ];
 
+// ข้อความสถานะการติดตั้งภาษาบน judge
+const STATUS_TEXT = {
+    ready: 'พร้อมใช้งาน',
+    pulling: 'กำลังติดตั้ง…',
+    error: 'ติดตั้งไม่สำเร็จ',
+    missing: 'ไม่มีบน judge',
+    offline: 'judge ออฟไลน์',
+};
+
+// ข้อความระดับความยาก (ใน DB เก็บเป็น easy / medium / hard)
+const LEVEL_TEXT = { easy: 'ง่าย', medium: 'ปานกลาง', hard: 'ยาก' };
+
 let quests = [], langs = [], editingQuest = null, editingLang = null, langPoll = null;
 
 // ===== ตรวจสิทธิ์: ต้อง login และ role = admin =====
 async function init() {
-    try { await api('GET', '/me'); }
-    catch (e) {
-        $('gate').textContent = 'You do not have permission to view this page.';
+    try {
+        await api('GET', '/me');
+    } catch (e) {
+        $('gate').textContent = 'คุณไม่มีสิทธิ์เข้าหน้านี้';
         return;
     }
     $('gate').hidden = true;
@@ -45,10 +60,12 @@ async function init() {
 // ===== Tabs =====
 document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === b));
-    ['quests', 'languages'].forEach((n) => ($('tab-' + n).hidden = n !== b.dataset.tab));
+    $('tab-quests').hidden = b.dataset.tab !== 'quests';
+    $('tab-languages').hidden = b.dataset.tab !== 'languages';
 }));
 
 // ===== helpers =====
+// สร้างช่อง <td> ใส่ข้อความ แล้วต่อท้ายแถว
 function cell(tr, text, cls) {
     const td = document.createElement('td');
     if (cls) td.className = cls;
@@ -56,20 +73,14 @@ function cell(tr, text, cls) {
     tr.appendChild(td);
     return td;
 }
+
+// สร้างปุ่ม
 function button(text, cls, onClick) {
-    const b = Object.assign(document.createElement('button'), { textContent: text, className: cls });
+    const b = document.createElement('button');
+    b.textContent = text;
+    b.className = cls;
     b.onclick = onClick;
     return b;
-}
-function actions(tr, onEdit, onDelete, extra = []) {
-    const td = cell(tr, '', 'act');
-    td.append(...extra, button('Edit', 'ghost small', onEdit), button('Delete', 'danger small', onDelete));
-}
-function emptyRow(tbody, cols, text) {
-    const tr = document.createElement('tr');
-    const td = cell(tr, text, 'empty');
-    td.colSpan = cols;
-    tbody.appendChild(tr);
 }
 
 // ===== Quests =====
@@ -77,73 +88,62 @@ async function loadQuests() {
     try { quests = await api('GET', '/quests'); } catch (e) { return alert(e.message); }
     const body = $('questRows');
     body.innerHTML = '';
-    if (!quests.length) return emptyRow(body, 5, 'No quests yet. Add the first one.');
+    if (!quests.length) {
+        body.innerHTML = '<tr><td colspan="5" class="empty">ยังไม่มีโจทย์ กด "เพิ่มโจทย์" เพื่อเริ่ม</td></tr>';
+        return;
+    }
+
     quests.forEach((q) => {
         const tr = document.createElement('tr');
         cell(tr, q.title);
-        const lv = cell(tr, '');
-        lv.innerHTML = '<span class="badge"></span>';
-        lv.firstChild.textContent = q.level;
-        lv.firstChild.classList.add(q.level);
+
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + q.level;
+        badge.textContent = LEVEL_TEXT[q.level];
+        cell(tr, '').appendChild(badge);
+
         cell(tr, q.rewards);
-        cell(tr, q.is_active ? 'Yes' : 'No');
-        actions(tr, () => openQuest(q), () => deleteQuest(q));
+        cell(tr, q.is_active ? 'เปิด' : 'ปิด');
+        cell(tr, '', 'act').append(
+            button('แก้ไข', 'ghost small', () => openQuest(q)),
+            button('ลบ', 'danger small', () => deleteQuest(q)),
+        );
         body.appendChild(tr);
     });
 }
 
-// สร้างช่องโค้ดตั้งต้น 1 ช่องต่อ 1 ภาษา จากรายการในแท็บ Languages
+// สร้างช่องโค้ดตั้งต้น 1 ช่องต่อ 1 ภาษา (ตามรายการในแท็บ Languages)
 function renderSetupCodeFields(setupCode) {
     const box = $('q_setup_codes');
-    box.replaceChildren();
+    box.innerHTML = '';
+    if (!langs.length) {
+        box.innerHTML = '<p class="hint">ยังไม่มีภาษา เพิ่มภาษาในแท็บ "ภาษา" ก่อน</p>';
+        return;
+    }
 
-    const addField = (id, title, orphan) => {
+    langs.forEach((l) => {
         const label = document.createElement('label');
-        if (orphan) label.className = 'orphan';
-        label.append(title);
+        label.append(l.name);
+
         const idTag = document.createElement('span');
         idTag.className = 'lang-id';
-        idTag.textContent = `#${id}`;
-        label.appendChild(idTag);
+        idTag.textContent = '#' + l.judge0_id;
 
         const ta = document.createElement('textarea');
         ta.className = 'code';
         ta.rows = 4;
-        ta.dataset.langId = id;
-        ta.value = setupCode[id] ?? '';
-        label.appendChild(ta);
+        ta.dataset.langId = l.judge0_id;
+        ta.value = setupCode[l.judge0_id] ?? '';
+
+        label.append(idTag, ta);
         box.appendChild(label);
-    };
-
-    langs.forEach((l) => addField(String(l.judge0_id), l.name, false));
-
-    // โค้ดของภาษาที่ถูกลบไปแล้ว: ยังโชว์ให้เห็น/ลบได้ ไม่หายเงียบๆ
-    const known = new Set(langs.map((l) => String(l.judge0_id)));
-    Object.keys(setupCode)
-        .filter((id) => !known.has(id))
-        .forEach((id) => addField(id, '(deleted language)', true));
-
-    if (!box.children.length) {
-        const p = document.createElement('p');
-        p.className = 'hint';
-        p.textContent = 'No languages yet. Add one in the Languages tab first.';
-        box.appendChild(p);
-    }
-}
-
-// อ่านทุกช่องกลับเป็น { "71": "...", "62": "..." } (ช่องว่างไม่เก็บ)
-function readSetupCodeFields() {
-    const codes = {};
-    $('q_setup_codes').querySelectorAll('textarea[data-lang-id]').forEach((ta) => {
-        if (ta.value.trim()) codes[ta.dataset.langId] = ta.value;
     });
-    return codes;
 }
 
 function openQuest(q) {
     editingQuest = q || null;
-    $('questDlgTitle').textContent = q ? 'Edit quest' : 'Add quest';
-    QUEST_TEXT.forEach((k) => ($('q_' + k).value = q?.[k] ?? ''));
+    $('questDlgTitle').textContent = q ? 'แก้ไขโจทย์' : 'เพิ่มโจทย์';
+    QUEST_TEXT.forEach((k) => { $('q_' + k).value = q?.[k] ?? ''; });
     $('q_level').value = q?.level ?? 'easy';
     $('q_rewards').value = q?.rewards ?? 0;
     $('q_is_active').checked = q?.is_active ?? true;
@@ -153,48 +153,57 @@ function openQuest(q) {
 }
 
 async function saveQuest() {
-    const row = { level: $('q_level').value, rewards: parseInt($('q_rewards').value, 10) || 0, is_active: $('q_is_active').checked };
-    QUEST_TEXT.forEach((k) => (row[k] = $('q_' + k).value));
-    row.setup_code = readSetupCodeFields();
-    if (!row.title.trim()) return ($('questErr').textContent = 'Title is required.');
-    try { await (editingQuest ? api('PUT', '/quests/' + editingQuest.id, row) : api('POST', '/quests', row)); }
-    catch (e) { return ($('questErr').textContent = e.message); }
+    const row = {
+        level: $('q_level').value,
+        rewards: parseInt($('q_rewards').value, 10) || 0,
+        is_active: $('q_is_active').checked,
+        setup_code: {},
+    };
+    QUEST_TEXT.forEach((k) => { row[k] = $('q_' + k).value; });
+
+    // อ่านช่องโค้ดตั้งต้นกลับเป็น { "71": "...", "62": "..." } (ช่องที่ว่างไม่เก็บ)
+    $('q_setup_codes').querySelectorAll('textarea').forEach((ta) => {
+        if (ta.value.trim()) row.setup_code[ta.dataset.langId] = ta.value;
+    });
+
+    try {
+        if (editingQuest) await api('PUT', '/quests/' + editingQuest.id, row);
+        else await api('POST', '/quests', row);
+    } catch (e) {
+        return ($('questErr').textContent = e.message);
+    }
     $('questDlg').close();
     loadQuests();
 }
 
 async function deleteQuest(q) {
-    if (!confirm(`Delete quest "${q.title}"? This cannot be undone.`)) return;
+    if (!confirm(`ลบโจทย์ "${q.title}" ใช่ไหม? ลบแล้วกู้คืนไม่ได้`)) return;
     try { await api('DELETE', '/quests/' + q.id); } catch (e) { return alert(e.message); }
     loadQuests();
 }
 
 // ===== Languages =====
-const STATUS_TEXT = {
-    ready: 'Ready',
-    pulling: 'Installing…',
-    error: 'Install failed',
-    missing: 'Not on judge',
-    offline: 'Judge offline',
-};
-
 async function loadLangs() {
     clearTimeout(langPoll);
     try { langs = await api('GET', '/languages'); } catch (e) { return alert(e.message); }
     const body = $('langRows');
     body.innerHTML = '';
-    if (!langs.length) return emptyRow(body, 5, 'No languages yet. Add the first one.');
+    if (!langs.length) {
+        body.innerHTML = '<tr><td colspan="5" class="empty">ยังไม่มีภาษา กด "เพิ่มภาษา" เพื่อเพิ่มภาษา</td></tr>';
+        return;
+    }
 
     langs.forEach((l) => {
         const tr = document.createElement('tr');
         cell(tr, l.name);
         cell(tr, l.judge0_id);
-        cell(tr, l.image || '—', 'mono');
+        cell(tr, l.image, 'mono');
 
+        // สถานะการติดตั้งบน judge (+ ข้อความ error ถ้ามี)
         const st = cell(tr, '');
         const pill = document.createElement('span');
         pill.className = 'status ' + l.judge_status;
-        pill.textContent = STATUS_TEXT[l.judge_status] || l.judge_status;
+        pill.textContent = STATUS_TEXT[l.judge_status];
         st.appendChild(pill);
         if (l.judge_error) {
             const d = document.createElement('div');
@@ -203,10 +212,15 @@ async function loadLangs() {
             st.appendChild(d);
         }
 
-        const extra = ['error', 'missing'].includes(l.judge_status) && l.image
-            ? [button('Retry', 'ghost small', () => retryLang(l))]
-            : [];
-        actions(tr, () => openLang(l), () => deleteLang(l), extra);
+        // ปุ่ม (Retry แสดงเฉพาะตอนติดตั้งไม่สำเร็จ)
+        const act = cell(tr, '', 'act');
+        if (l.judge_status === 'error' || l.judge_status === 'missing') {
+            act.appendChild(button('ลองใหม่', 'ghost small', () => retryLang(l)));
+        }
+        act.append(
+            button('แก้ไข', 'ghost small', () => openLang(l)),
+            button('ลบ', 'danger small', () => deleteLang(l)),
+        );
         body.appendChild(tr);
     });
 
@@ -216,14 +230,15 @@ async function loadLangs() {
     }
 }
 
+// กรอกฟอร์มภาษาจากข้อมูล (ใช้ตอนแก้ไข และตอนเลือก preset)
 function fillLangForm(src) {
     $('l_judge0_id').value = src?.judge0_id ?? '';
-    LANG_TEXT.forEach((k) => ($('l_' + k).value = src?.[k] ?? ''));
+    LANG_TEXT.forEach((k) => { $('l_' + k).value = src?.[k] ?? ''; });
 }
 
 function openLang(l) {
     editingLang = l || null;
-    $('langDlgTitle').textContent = l ? 'Edit language' : 'Add language';
+    $('langDlgTitle').textContent = l ? 'แก้ไขภาษา' : 'เพิ่มภาษา';
     $('l_preset').value = '';
     $('l_preset').disabled = !!l;
     fillLangForm(l);
@@ -231,45 +246,46 @@ function openLang(l) {
     $('langDlg').showModal();
 }
 
-function readLangForm() {
-    const row = { judge0_id: parseInt($('l_judge0_id').value, 10) };
-    LANG_TEXT.forEach((k) => (row[k] = $('l_' + k).value.trim()));
-    return row;
-}
-
 async function saveLang() {
-    const row = readLangForm();
-    if (!row.name || Number.isNaN(row.judge0_id)) return ($('langErr').textContent = 'Name and Judge0 ID are required.');
-    if (!row.image || !row.file_name || !row.run_cmd) return ($('langErr').textContent = 'Image, file name and run command are required.');
+    const row = { judge0_id: parseInt($('l_judge0_id').value, 10) };
+    LANG_TEXT.forEach((k) => { row[k] = $('l_' + k).value.trim(); });
 
+    // กันกด Save ซ้ำระหว่างรอ judge
     const btn = $('langSave');
     btn.disabled = true;
-    btn.textContent = 'Saving…';
-    try { await (editingLang ? api('PUT', '/languages/' + editingLang.id, row) : api('POST', '/languages', row)); }
-    catch (e) { return ($('langErr').textContent = e.message); }
-    finally { btn.disabled = false; btn.textContent = 'Save language'; }
+    btn.textContent = 'กำลังบันทึก…';
+    try {
+        if (editingLang) await api('PUT', '/languages/' + editingLang.id, row);
+        else await api('POST', '/languages', row);
+    } catch (e) {
+        return ($('langErr').textContent = e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'บันทึกภาษา';
+    }
 
     $('langDlg').close();
     loadLangs();
 }
 
-// ส่งข้อมูลเดิมให้ judge ติดตั้งใหม่
+// ส่งข้อมูลเดิมให้ judge ติดตั้งใหม่ (server เลือกเฉพาะช่องที่ใช้เอง)
 async function retryLang(l) {
-    const row = { judge0_id: l.judge0_id };
-    LANG_TEXT.forEach((k) => (row[k] = l[k] ?? ''));
-    try { await api('PUT', '/languages/' + l.id, row); } catch (e) { return alert(e.message); }
+    try { await api('PUT', '/languages/' + l.id, l); } catch (e) { return alert(e.message); }
     loadLangs();
 }
 
 async function deleteLang(l) {
-    if (!confirm(`Delete language "${l.name}"? Its Docker image will also be removed from the judge server.`)) return;
+    if (!confirm(`ลบภาษา "${l.name}" ใช่ไหม? Docker image ของภาษานี้จะถูกลบออกจากเครื่อง judge ด้วย`)) return;
     try { await api('DELETE', '/languages/' + l.id); } catch (e) { return alert(e.message); }
     loadLangs();
 }
 
 // ===== presets =====
 LANG_PRESETS.forEach((p, i) => {
-    $('l_preset').appendChild(Object.assign(document.createElement('option'), { value: i, textContent: p.name }));
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    $('l_preset').appendChild(opt);
 });
 $('l_preset').onchange = (e) => {
     if (e.target.value !== '') fillLangForm(LANG_PRESETS[e.target.value]);
