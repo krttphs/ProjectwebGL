@@ -54,7 +54,7 @@ router.post("/register",hasAuth, async (req, res) => {
     id: data.user.id,
     email: tempEmail,
     username,
-    coins: 0,
+    points: 0,
   });
 
   if (insertError) return res.status(400).json({ error: insertError.message });
@@ -90,7 +90,7 @@ router.get("/me", requireAuth,async (req, res) => {
   // ดึงข้อมูล profile จาก table users 
   const { data: profile, error: profileError } = await supabase
     .from("users")
-    .select("username, coins")
+    .select("username, points")
     .eq("id", req.user.id)
     .single();
 
@@ -102,7 +102,7 @@ router.get("/me", requireAuth,async (req, res) => {
     id: userId,
     email: userEmail,
     username: profile.username,
-    coins: profile.coins,
+    points: profile.points,
   });
 });
 

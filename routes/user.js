@@ -28,7 +28,7 @@ router.get("/profile", requireAuth, async (req, res) => {
 
     const { data, error } = await supabase
       .from("users")
-      .select("id, username, coins, bio, profile_image")
+      .select("id, username, points, bio, profile_image")
       .eq("id", req.user.id)
       .single();
 
@@ -218,7 +218,7 @@ router.get("/balance", requireAuth, async (req, res) => {
 
     const { data, error } = await supabase
       .from("users")
-      .select("coins")
+      .select("points")
       .eq("id", req.user.id)
       .single();
 
@@ -231,7 +231,7 @@ router.get("/balance", requireAuth, async (req, res) => {
     }
 
     res.json({
-      coins: data ? data.coins : 0
+      points: data ? data.points : 0
     });
 
   } catch (err) {

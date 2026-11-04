@@ -8,7 +8,7 @@ router.get("/", requireAuth, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from("users")
-            .select("id, username, coins, bio, profile_image")
+            .select("id, username, points, bio, profile_image")
             .eq("id", req.user.id)
             .single();
 
@@ -47,7 +47,7 @@ router.patch("/", requireAuth, async (req, res) => {
             .from("users")
             .update(updates)
             .eq("id", req.user.id)
-            .select("id, username, coins, bio, profile_image")
+            .select("id, username, points, bio, profile_image")
             .single();
 
         if (error) {

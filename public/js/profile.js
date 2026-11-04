@@ -22,8 +22,8 @@ async function loadProfile() {
         document.getElementById("bio").value =
             data.bio || "";
 
-        document.getElementById("coins").textContent =
-            data.coins || 0;
+        document.getElementById("points").textContent =
+            data.points || 0;
 
 
         // โหลดรูป Profile จาก Database

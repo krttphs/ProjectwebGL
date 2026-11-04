@@ -1353,8 +1353,8 @@ async function endGame() {
     document.getElementById("final-score").innerText = finalScore;
 
     // โดนไล่ออก (server overheat) = ไม่ได้เหรียญ
-    const coinsEarned = reason === "fired" ? 0 : finalScore > 0 ? finalScore : 0;
-    document.getElementById("final-coins").innerText = coinsEarned;
+    const pointsEarned = reason === "fired" ? 0 : finalScore > 0 ? finalScore : 0;
+    document.getElementById("final-points").innerText = pointsEarned;
 
     document.getElementById("summary-modal").style.display = "flex";
   } catch (err) {

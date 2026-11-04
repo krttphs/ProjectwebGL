@@ -139,7 +139,7 @@ async function fireRoom(roomId) {
 // วันที่ 1..7 ต้องส่ง 3 / 5 / 7 / 8 / 9 / 10 / 12 ลูก — วันไหนไม่ครบ heat ต่อการส่งผิดขึ้น 1 ขั้น
 // 10 -> 20 -> 40 -> 80 -> 100 (ขึ้นอย่างเดียว ไม่ลด) · บอลแดงไม่นับ
 // เก็บใน DB (ไม่เพิ่มคอลัมน์): game_rooms.progress = จำนวนบอลเขียวของวันนี้ (ทุกคนเห็นเท่ากันผ่าน realtime)
-//                            game_rooms.difficulty = "q:<วัน (เริ่ม 0)>:<ขั้น heat>" (คอลัมน์เดิมไม่ได้ใช้)
+// game_rooms.difficulty = "q:<วัน (เริ่ม 0)>:<ขั้น heat>" (คอลัมน์เดิมไม่ได้ใช้)
 const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12];
 const HEAT_STEPS = [10, 20, 40, 80, 100];
 const QUOTA_STATE_COLUMN = "difficulty";

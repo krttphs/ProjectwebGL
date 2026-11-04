@@ -84,16 +84,16 @@ async function fetchBalance() {
 
     const data = await res.json();
 
-    const coinSpan = document.getElementById("coinDisplay");
-    if (coinSpan) {
-      animateValue(coinSpan, 0, data.coins, 1000);
+    const pointSpan = document.getElementById("pointDisplay");
+    if (pointSpan) {
+      animateValue(pointSpan, 0, data.points, 1000);
     }
   } catch (err) {
     console.error("Error fetching balance:", err);
   }
 }
 
-// ทำให้ coin เพิ่มขึ้นแบบ 0 - จำนวนที่มี
+// ทำให้ point เพิ่มขึ้นแบบ 0 - จำนวนที่มี
 function animateValue(obj, start, end, duration) {
   let startTimestamp = null;
   const step = (timestamp) => {
@@ -1043,6 +1043,9 @@ function updateTimeTotalDisplay() {
 ["time_day_minutes", "time_day_count"].forEach((id) => {
   document.getElementById(id).addEventListener("change", updateTimeTotalDisplay);
 });
+function goToMainMenu() {
+    window.location.href = "/mainmenu";
+}
 
 // Initial Load for Badge check
 loadFriendRequests();
