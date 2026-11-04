@@ -61,7 +61,6 @@ async function goToGameMode1() {
 }
 
 async function logout() {
-  if (!confirm("Are you sure you want to log out?")) return;
 
   try {
     const response = await fetch("/api/auth/logout", {
@@ -75,6 +74,16 @@ async function logout() {
   } catch (err) {
     alert("Error to logout! : " + err.message);
   }
+}
+
+function openLogoutModal(){
+  const modal = document.getElementById("logoutModal");
+  modal.classList.remove("hidden");
+}
+
+function cancelLogout(){
+  const modal = document.getElementById("logoutModal");
+  modal.classList.add("hidden");
 }
 
 async function fetchBalance() {

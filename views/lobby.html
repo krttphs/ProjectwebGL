@@ -200,7 +200,7 @@
                         <i class="fa-solid fa-music"></i>
                     </button>
 
-                    <button onclick="logout()"
+                    <button onclick="openLogoutModal()"
                         class="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/80 text-white flex items-center justify-center transition-colors border border-red-500/50">
                         <i class="fa-solid fa-power-off"></i>
                     </button>
@@ -394,6 +394,9 @@
             <button class="cursor-pointer border p-5 rounded-xl bg-white text-black hover:-translate-y-2.5 transition-all duration-200" onclick="goToMainMenu()">
                 BACK TO MAIN MENU
             </button>
+        </div>
+        <div id="logoutModal"class="z-20 hidden absolute inset-0 bg-black/80 flex justify-center items-center gap-4">
+            Are you sure you want to log out? <button onclick="logout()" class="text-red-400 font-bold cursor-pointer hover:text-red-500">Yes</button> <button onclick="cancelLogout()" class="text-cyan-400 font-bold cursor-pointer hover:text-cyan-500">No</button>
         </div>
     </div>
     <script src="/js/lobby.js"></script>
