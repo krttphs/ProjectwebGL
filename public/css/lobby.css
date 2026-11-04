@@ -121,3 +121,191 @@
       input[type="number"] {
         -moz-appearance: textfield;
       }
+
+/* ===== Lobby redesign: พื้นหลัง + การ์ดโหมดเกม ===== */
+:root {
+    --lb-bg: #070b16;
+    --lb-panel: rgba(15, 23, 42, 0.72);
+    --lb-line: rgba(148, 163, 184, 0.14);
+    --lb-text: #e2e8f0;
+    --lb-muted: #94a3b8;
+    --lb-cyan: #22d3ee;
+    --lb-orange: #fb923c;
+}
+
+body.lb-body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: "Poppins", "Noto Sans Thai", "Leelawadee UI", sans-serif;
+    color: var(--lb-text);
+    background-color: var(--lb-bg);
+    background-image:
+        radial-gradient(900px 500px at 12% -10%, rgba(34, 211, 238, 0.16), transparent 60%),
+        radial-gradient(800px 500px at 95% 110%, rgba(251, 146, 60, 0.14), transparent 60%),
+        linear-gradient(var(--lb-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--lb-line) 1px, transparent 1px);
+    background-size: auto, auto, 48px 48px, 48px 48px;
+    background-attachment: fixed;
+}
+
+/* ---------- Mode cards ---------- */
+.lb-modes {
+    flex-wrap: wrap;
+    align-content: center;
+    padding-bottom: 40px;
+}
+
+.lb-card {
+    --accent: var(--lb-cyan);
+    --accent-2: #3b82f6;
+    position: relative;
+    width: 360px;
+    max-width: 100%;
+    border-radius: 24px;
+    padding: 14px;
+    background: var(--lb-panel);
+    border: 1px solid var(--lb-line);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.lb-card:hover {
+    transform: translateY(-6px);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5), 0 0 40px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.lb-card.lb-endless {
+    --accent: var(--lb-orange);
+    --accent-2: #ef4444;
+}
+
+.lb-thumb {
+    position: relative;
+    height: 210px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--lb-line);
+}
+
+.lb-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.7s ease;
+}
+
+.lb-card:hover .lb-thumb img {
+    transform: scale(1.07);
+}
+
+.lb-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(2, 6, 23, 0.85), transparent 55%);
+}
+
+.lb-tag {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    z-index: 1;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 6px;
+    color: #0b1120;
+    background: var(--accent);
+}
+
+.lb-howto {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    background: rgba(2, 6, 23, 0.6);
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.lb-howto:hover {
+    background: rgba(2, 6, 23, 0.9);
+}
+
+.lb-body-text {
+    padding: 16px 6px 4px;
+}
+
+.lb-card h3 {
+    margin: 0 0 4px;
+    font-size: 26px;
+    font-weight: 800;
+}
+
+.lb-card p {
+    margin: 0 0 14px;
+    font-size: 14px;
+    color: var(--lb-muted);
+}
+
+.lb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.lb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--lb-line);
+}
+
+.lb-chip i {
+    color: var(--accent);
+}
+
+.lb-play {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 0;
+    border: 0;
+    border-radius: 14px;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 35%, transparent);
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.lb-play:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}

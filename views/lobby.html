@@ -17,7 +17,7 @@
 
 </head>
 
-<body class="text-white h-screen w-screen relative">
+<body class="lb-body text-white h-screen w-screen relative">
     <!-- <div class="w-25 h-2 bg-black absolute mx-auto z-10 rounded-xl">
     </div> -->
     <!-- <div id="unity-bg-placeholder" class="absolute inset-0 z-0 bg-gradient-to-b from-slate-900 via-slate-800 to-black">
@@ -69,70 +69,50 @@
         </button> -->
             </div>
         </nav>
-        <main id="gameMenu" class="flex-grow flex items-center justify-center gap-8 w-full">
-            <div
-                class="game-card group w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden">
-                <div class="absolute flex w-[50%] h-[6%] bg-blue-500 z-99 right-0 rounded-full justify-center items-center mr-3 top-2 md:w-[30%] z-99 cursor-pointer hover:scale-110 transition-transform duration-300"
-                    onclick="howToPlayGM1()">
-                    <h3>How to play</h3>
+        <main id="gameMenu" class="lb-modes flex-grow flex items-center justify-center gap-8 w-full">
+            <article class="lb-card">
+                <div class="lb-thumb">
+                    <img src="/img/mode-normal.svg" alt="ออฟฟิศยามค่ำคืน">
+                    <button class="lb-howto" onclick="howToPlayGM1()">
+                        <i class="fa-solid fa-book-open"></i> How to play
+                    </button>
+                    <span class="lb-tag">WORK OFFICE</span>
                 </div>
-                <div
-                    class="h-[60%] w-full bg-blue-900/50 rounded-2xl mb-4 relative overflow-hidden border border-white/10 group-hover:border-cyan-400/50 transition-colors">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80">
+                <div class="lb-body-text">
+                    <h3>Work office</h3>
+                    <p>Team up OR Solo work!</p>
+                    <div class="lb-chips">
+                        <span class="lb-chip"><i class="fa-solid fa-users"></i> 1-4 คน</span>
+                        <span class="lb-chip"><i class="fa-solid fa-clock"></i> 1-7 วัน</span>
+                        <span class="lb-chip"><i class="fa-solid fa-box"></i> โควต้ารายวัน</span>
                     </div>
-                    <img src="img/gamemode1.png" alt="gamemode1 img"
-                        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    <div class="absolute bottom-4 left-4">
-                        <span class="bg-cyan-500 text-black text-xs font-bold px-2 py-1 rounded">EASY</span>
-                    </div>
-                </div>
-
-                <div class="text-left px-2">
-                    <h3 class="text-3xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
-                        Work office
-                    </h3>
-                    <p class="text-gray-400 text-sm mb-6">Team up OR Solo work!</p>
-
-                    <button
-                        class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
-                        onclick="openRoomBrowser('normal')">
-                        <span>Play</span>
-                        <i class="fa-solid fa-play"></i>
+                    <button class="lb-play" onclick="openRoomBrowser('normal')">
+                        PLAY <i class="fa-solid fa-play"></i>
                     </button>
                 </div>
-            </div>
+            </article>
 
-            <div
-                class="game-card group w-[350px] h-[450px] glass-panel rounded-3xl p-4 flex flex-col relative overflow-hidden">
-                <div class="absolute flex w-[50%] h-[6%] bg-blue-500 z-99 right-0 rounded-full justify-center items-center mr-3 top-2 md:w-[30%] z-99 cursor-pointer hover:scale-110 transition-transform duration-300"
-                    onclick="howToPlayGM1()">
-                    <h3>How to play</h3>
+            <article class="lb-card lb-endless">
+                <div class="lb-thumb">
+                    <img src="/img/mode-endless.svg" alt="ห้อง Server ที่กำลังร้อน">
+                    <button class="lb-howto" onclick="howToPlayGM1()">
+                        <i class="fa-solid fa-book-open"></i> How to play
+                    </button>
+                    <span class="lb-tag">ENDLESS</span>
                 </div>
-                <div
-                    class="h-[60%] w-full bg-blue-900/50 rounded-2xl mb-4 relative overflow-hidden border border-white/10 group-hover:border-cyan-400/50 transition-colors">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80">
+                <div class="lb-body-text">
+                    <h3>Endless mode</h3>
+                    <p>None stop working!</p>
+                    <div class="lb-chips">
+                        <span class="lb-chip"><i class="fa-solid fa-users"></i> 1-4 คน</span>
+                        <span class="lb-chip"><i class="fa-solid fa-infinity"></i> ไม่มีวันจบ</span>
+                        <span class="lb-chip"><i class="fa-solid fa-temperature-high"></i> รอดจนกว่าจะ 100%</span>
                     </div>
-                    <img src="img/gamemode1.png" alt="gamemode1 img"
-                        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    <div class="absolute bottom-4 left-4">
-                        <span class="bg-red-300 text-black text-xs font-bold px-2 py-1 rounded">Endless</span>
-                    </div>
-                </div>
-
-                <div class="text-left px-2">
-                    <h3 class="text-3xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
-                        Endless mode
-                    </h3>
-                    <p class="text-gray-400 text-sm mb-6">None stop working!</p>
-
-                    <button
-                        class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl font-bold text-white shadow-lg group-hover:shadow-cyan-500/50 transition-all flex justify-center items-center gap-2 cursor-pointer"
-                        onclick="openRoomBrowser('endless')">
-                        <span>Play</span>
-                        <i class="fa-solid fa-play"></i>
+                    <button class="lb-play" onclick="openRoomBrowser('endless')">
+                        PLAY <i class="fa-solid fa-play"></i>
                     </button>
                 </div>
-            </div>
+            </article>
         </main>
         <div id="background-darker"
             class="hidden fixed inset-0 z-10 bg-black/80 flex justify-center items-center opacity-0 transition-opacity duration-300">
