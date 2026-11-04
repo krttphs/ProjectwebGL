@@ -190,16 +190,6 @@
                             0
                         </div>
                     </div>
-                    <button
-                        class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/30 text-white flex items-center justify-center transition-colors">
-                        <i class="fa-solid fa-volume-high"></i>
-                    </button>
-
-                    <button
-                        class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/30 text-white flex items-center justify-center transition-colors">
-                        <i class="fa-solid fa-music"></i>
-                    </button>
-
                     <button onclick="openLogoutModal()"
                         class="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/80 text-white flex items-center justify-center transition-colors border border-red-500/50">
                         <i class="fa-solid fa-power-off"></i>
@@ -391,13 +381,68 @@
             </div>
         </div>
         <div class="flex w-full justify-center items-center mb-4">
-            <button class="cursor-pointer border p-5 rounded-xl bg-white text-black hover:-translate-y-2.5 transition-all duration-200" onclick="goToMainMenu()">
+            <button
+                class="cursor-pointer border p-5 rounded-xl bg-white text-black hover:-translate-y-2.5 transition-all duration-200"
+                onclick="goToMainMenu()">
                 BACK TO MAIN MENU
             </button>
         </div>
-        <div id="logoutModal"class="z-20 hidden absolute inset-0 bg-black/80 flex justify-center items-center gap-4">
-            Are you sure you want to log out? <button onclick="logout()" class="text-red-400 font-bold cursor-pointer hover:text-red-500">Yes</button> <button onclick="cancelLogout()" class="text-cyan-400 font-bold cursor-pointer hover:text-cyan-500">No</button>
+        <!-- Logout Confirmation Modal -->
+        <!-- LOGOUT MODAL -->
+<div id="logoutModal"
+    class="hidden fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm
+    flex items-center justify-center p-4">
+
+    <div class="logout-modal-box w-full max-w-[550px]
+        bg-[#111827] border border-slate-700/70
+        rounded-3xl shadow-2xl p-6">
+
+        <!-- Close Button -->
+        <div class="flex justify-end mb-4">
+            <button onclick="cancelLogout()"
+                class="w-9 h-9 rounded-full bg-slate-700/50
+                hover:bg-red-500 text-white
+                flex items-center justify-center transition-all">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
+
+        <!-- Confirmation -->
+        <div class="flex flex-col items-center text-center py-6">
+
+            <h3 class="text-xl font-bold text-white mb-3">
+                Are you sure you want to log out?
+            </h3>
+
+            <p class="text-gray-400 text-sm">
+               
+            </p>
+
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3 mt-5">
+
+            <button onclick="cancelLogout()"
+                class="flex-1 py-3 rounded-xl
+                bg-slate-800 border border-slate-700
+                text-gray-300 font-bold
+                hover:bg-slate-700 transition-all">
+                CANCEL
+            </button>
+
+            <button onclick="logout()"
+                class="flex-1 py-3 rounded-xl
+                bg-red-600 hover:bg-red-500
+                text-white font-bold
+                transition-all">
+                <i class="fa-solid fa-power-off mr-2"></i>
+                LOG OUT
+            </button>
+
+        </div>
+    </div>
+</div>
     </div>
     <script src="/js/lobby.js"></script>
 </body>
