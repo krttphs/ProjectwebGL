@@ -139,7 +139,6 @@ let PROGRESS_INCREMENT_DECREMENT = 0;
 // ค่าอยู่ใน DB (routes/game.js) -> ทุกคนเห็นเท่ากัน: ได้ทันทีผ่าน realtime ของ game_rooms + poll /heat สำรอง
 const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12]; // ตรงกับ routes/game.js
 const HEAT_STEPS = [10, 20, 40, 80, 100];
-const QUOTA_STATE_COLUMN = "difficulty"; // "q:<วัน>:<ขั้น heat>" (ตรงกับ routes/game.js)
 
 function setQuotaUI(info) {
   const quota = info.quota || 1;
@@ -153,13 +152,52 @@ function setQuotaUI(info) {
   document.getElementById("quota-heat-text").textContent =
     `ส่งผิด = +${info.heatPerWrong} heat`;
   document.getElementById("progress-board").classList.toggle("quota-met", met);
+
+  // ส่งครบแล้ว -> ปุ่มข้ามวัน (วันสุดท้ายข้าม = จบเกมเลย)
+  const skipBtn = document.getElementById("skip-day-btn");
+  const finalDay = !isEndlessGame && info.day + 1 >= gameDayCount;
+  skipBtn.hidden = !met || isGameEnded;
+  skipBtn.textContent = finalDay ? "Finish the game now ⏭" : "Skip to next day ⏭";
 }
+
+// ===== ข้ามวัน =====
+// server เลื่อน end_time ให้วันนี้จบตอนนี้ -> ทุกคนได้ end_time ใหม่ผ่าน realtime แล้วตั้งเวลา Unity ใหม่ (resyncTimer)
+async function skipDay() {
+  const skipBtn = document.getElementById("skip-day-btn");
+  const finalDay = skipBtn.textContent.startsWith("Finish");
+  const question = finalDay
+    ? "จบเกมตอนนี้เลยไหม? (ทั้งห้องจะจบเกมด้วย)"
+    : "ข้ามไปวันถัดไปเลยไหม? (ทั้งห้องจะข้ามด้วย)";
+  if (!confirm(question)) return;
+
+  skipBtn.disabled = true;
+  try {
+    const res = await fetch("/api/game/skip-day", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: currentRoomId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.error || "ข้ามวันไม่สำเร็จ");
+      return;
+    }
+    if (typeof data.quota === "number") setQuotaUI(data);
+    resyncTimer();
+  } catch (err) {
+    console.error("skip-day error:", err);
+  } finally {
+    skipBtn.disabled = false;
+  }
+}
+
+document.getElementById("skip-day-btn").addEventListener("click", skipDay);
 
 // แถวของ game_rooms จาก realtime -> ข้อมูลโควต้า
 function quotaInfoFromRow(row) {
-  const m = /^q:(\d+):(\d+)$/.exec(row[QUOTA_STATE_COLUMN] || "");
-  const day = m ? Number(m[1]) : 0;
-  const step = m ? Number(m[2]) : 0;
+  // quota_day = วันที่ (เริ่ม 0), heat_step = ขั้น heat ต่อการส่งผิด (ตรงกับ routes/game.js)
+  const day = Number(row.quota_day) || 0;
+  const step = Number(row.heat_step) || 0;
   return {
     day,
     delivered: row.progress || 0,
@@ -217,7 +255,7 @@ function setScoreUI(score) {
 
 // ===== Server Heat (ค่าของทั้งห้อง: submit ผิด +10, ครบ 100 = overheat) =====
 const HEAT_MAX = 100;
-const HEAT_COLUMN = "max_players"; // คอลัมน์ใน game_rooms ที่ใช้เก็บ heat (ตรงกับ routes/game.js)
+const HEAT_COLUMN = "heat"; // คอลัมน์ใน game_rooms ที่เก็บ heat (ตรงกับ routes/game.js)
 let roomHeat = 0;
 let heatPollTimer = null;
 
@@ -959,8 +997,12 @@ async function subscribeGameStatus(roomId) {
           document.getElementById("waiting-screen").style.display = "none";
           startTimer();
         }
-        // heat อยู่ใน game_rooms -> ทุกคนในห้องได้ค่าใหม่พร้อมกันทันที (แบบเดียวกับ timer / day)
-        // เก็บในคอลัมน์ max_players (ดู HEAT_COLUMN ใน routes/game.js) — อ่านเฉพาะตอนเกมเล่นอยู่ (ก่อนเริ่มยังเป็น 4)
+        // มีคนกดข้ามวัน (end_time / started_at เลื่อน) -> ตั้งเวลาเว็บ + Unity ใหม่
+        if (newStatus === "playing" && isGameStarted && timerKey && timerKeyOf(payload.new) !== timerKey) {
+          timerKey = timerKeyOf(payload.new);
+          resyncTimer();
+        }
+        // heat อยู่ใน game_rooms.heat -> ทุกคนในห้องได้ค่าใหม่พร้อมกันทันที (แบบเดียวกับ timer / day)
         if (newStatus === "playing" && typeof payload.new?.[HEAT_COLUMN] === "number") {
           setHeatUI(payload.new[HEAT_COLUMN]);
         }
@@ -996,6 +1038,19 @@ async function subscribeGameStatus(roomId) {
 let countdownInterval;
 
 let isEndlessGame = false;
+let gameDayCount = 1;
+// end_time / started_at ที่ตั้งเวลาไว้ล่าสุด — มีคนข้ามวันแล้วค่าเปลี่ยน -> ตั้งเวลาใหม่
+let timerKey = "";
+
+function timerKeyOf(row) {
+  return `${Date.parse(row.end_time) || 0}|${Date.parse(row.started_at) || 0}`;
+}
+
+// มีคนข้ามวัน: หยุดนับถอยหลังเดิม แล้วอ่านเวลาใหม่จาก server (ส่ง SetupTime ให้ Unity ใหม่ด้วย)
+function resyncTimer() {
+  if (countdownInterval) clearInterval(countdownInterval);
+  startTimer();
+}
 
 const ENDLESS_UNITY_DAY_COUNT = 0;
 
@@ -1054,6 +1109,8 @@ async function startTimer() {
     if (!res.ok) throw new Error("Fetch time error");
     const roomData = await res.json();
     isEndlessGame = roomData.mode === "endless";
+    gameDayCount = roomData.day_count || 1;
+    timerKey = timerKeyOf(roomData);
 
     // Endless ไม่มีเวลาจบ ไม่ต้องนับถอยหลัง -> บอก Unity เรื่องเวลาแล้วจบตรงนี้
     // (เกมจบเมื่อ heat ถึง 100 เท่านั้น ซึ่ง setHeatUI / realtime จัดการอยู่แล้ว)
@@ -1086,6 +1143,8 @@ async function startTimer() {
       unityInstance.SendMessage("GameManager", "SetupTime", timeString);
     }
 
+    // resync ซ้อนกัน (กดข้ามวันเอง + realtime) จะได้ไม่มีตัวนับ 2 ตัว
+    if (countdownInterval) clearInterval(countdownInterval);
     countdownInterval = setInterval(() => {
       const now = new Date().getTime();
       const distance = endTime - now;
@@ -1323,6 +1382,7 @@ async function endGame() {
     stopHeatPolling();
     if (terminalOpen) setTerminalOpen(false);
     document.getElementById("leave-game-btn").style.display = "none";
+    document.getElementById("skip-day-btn").hidden = true;
     const res = await fetch(`/api/game/endgame/${currentRoomId}`, {
       method: "POST",
     });

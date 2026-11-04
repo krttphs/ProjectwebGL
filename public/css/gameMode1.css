@@ -505,6 +505,34 @@
         color: #50fa7b;
       }
 
+      /* ปุ่มข้ามวัน (กล่องโควต้าตั้ง pointer-events: none ไว้ ปุ่มต้องเปิดเอง) */
+      #skip-day-btn {
+        pointer-events: auto;
+        margin-top: 2px;
+        padding: 5px 14px;
+        border: 1px solid #50fa7b;
+        border-radius: 8px;
+        background: rgba(80, 250, 123, 0.15);
+        color: #50fa7b;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      #skip-day-btn:hover:not(:disabled) {
+        background: rgba(80, 250, 123, 0.3);
+      }
+
+      #skip-day-btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      #skip-day-btn[hidden] {
+        display: none;
+      }
+
       #progress-bar-empty {
         width: 260px;
         height: 16px;

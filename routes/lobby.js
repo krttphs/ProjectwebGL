@@ -16,6 +16,8 @@ const STATUS_ORDER = { waiting: 0, full: 1, loading: 2, playing: 3 };
 // ตัวเลือก time limit ที่ host เลือกได้
 const DAY_MINUTE_OPTIONS = [3, 5, 10];
 const DAY_COUNT_OPTIONS = [1, 3, 5, 7];
+// join ชนกันจนเกิน 4 แล้วถอยออก -> ลองใหม่ได้อีกกี่รอบ
+const JOIN_RETRIES = 3;
 
 const GAME_MODES = ["normal", "endless"];
 const DEFAULT_MODE = "normal";
@@ -108,22 +110,30 @@ async function joinRoom(roomId, userId) {
   }
   const isOpen = OPEN_STATUSES.includes(room.status);
 
-  const count = await countPlayers(roomId);
-  if (count >= MAX_PLAYERS_PER_ROOM) {
-    if (isOpen) await supabase.from("game_rooms").update({ status: "full" }).eq("id", roomId);
-    return { ok: false, status: 409, body: { error: "ห้องเต็มแล้ว" } };
-  }
+  // หลายคนกด join พร้อมกัน: ทุกคน insert แล้วนับซ้ำเห็นเกิน 4 เหมือนกันหมด -> ถอยออกพร้อมกันจนห้องไม่เต็ม
+  // เลยให้คนที่ถอยรอสุ่มสั้นๆ แล้วลองใหม่ (ตาราง room_players ไม่มีลำดับเวลาเข้าให้ตัดสินว่าใครมาก่อน)
+  let after = 0;
+  for (let attempt = 0; ; attempt++) {
+    const count = await countPlayers(roomId);
+    if (count >= MAX_PLAYERS_PER_ROOM) {
+      if (isOpen) await supabase.from("game_rooms").update({ status: "full" }).eq("id", roomId);
+      return { ok: false, status: 409, body: { error: "ห้องเต็มแล้ว" } };
+    }
 
-  const { error: joinErr } = await supabase
-    .from("room_players")
-    .insert({ room_id: roomId, player_id: userId });
-  if (joinErr) throw joinErr;
+    const { error: joinErr } = await supabase
+      .from("room_players")
+      .insert({ room_id: roomId, player_id: userId });
+    if (joinErr) throw joinErr;
 
-  // นับซ้ำหลัง insert กันกรณีหลายคนกด join พร้อมกันจนเกิน 4
-  const after = await countPlayers(roomId);
-  if (after > MAX_PLAYERS_PER_ROOM) {
+    // นับซ้ำหลัง insert กันกรณีหลายคนกด join พร้อมกันจนเกิน 4
+    after = await countPlayers(roomId);
+    if (after <= MAX_PLAYERS_PER_ROOM) break;
+
     await supabase.from("room_players").delete().eq("room_id", roomId).eq("player_id", userId);
-    return { ok: false, status: 409, body: { error: "ห้องเต็มแล้ว" } };
+    if (attempt >= JOIN_RETRIES) {
+      return { ok: false, status: 409, body: { error: "ห้องเต็มแล้ว" } };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 250));
   }
   // สถานะ full ใช้เฉพาะห้องรอ (ห้องที่เริ่มเกมแล้วดูจากจำนวนคนแทน)
   if (isOpen && after >= MAX_PLAYERS_PER_ROOM) {

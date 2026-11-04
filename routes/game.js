@@ -55,9 +55,8 @@ const COOLING_COMMANDS = [
 
 // heat เก็บใน DB -> ทุกคนในห้องเห็นค่าเดียวกัน แม้ต่อเข้า server คนละตัว (แบบเดียวกับ timer / day)
 // และหน้าเว็บได้ค่าใหม่ทันทีผ่าน realtime ของ game_rooms
-// ⚠️ ไม่ได้เพิ่มคอลัมน์ใหม่ (ไม่ใช้ SQL): ใช้คอลัมน์ game_rooms.max_players ที่ไม่ได้ถูกใช้ (เดิมเป็น 4 ทุกห้อง)
-//    เก็บค่า heat แทน — เปลี่ยนที่เดียวตรง HEAT_COLUMN (หน้าเว็บ gameMode1.js ใช้ชื่อเดียวกัน)
-const HEAT_COLUMN = "max_players";
+// คอลัมน์ game_rooms.heat (หน้าเว็บ gameMode1.js ใช้ชื่อเดียวกัน)
+const HEAT_COLUMN = "heat";
 
 function heatOf(room) {
   return Number(room?.[HEAT_COLUMN]) || 0;
@@ -88,13 +87,13 @@ async function addRoomHeat(roomId, amount, reason) {
 
     const before = heatOf(room);
     const heat = Math.min(HEAT_MAX, Math.max(0, before + amount));
-    const { data: updated, error } = await supabase
+    let query = supabase
       .from("game_rooms")
       .update({ [HEAT_COLUMN]: heat })
       .eq("id", roomId)
-      .eq("status", "playing")
-      .eq(HEAT_COLUMN, room[HEAT_COLUMN])
-      .select("id");
+      .eq("status", "playing");
+    query = room[HEAT_COLUMN] == null ? query.is(HEAT_COLUMN, null) : query.eq(HEAT_COLUMN, room[HEAT_COLUMN]);
+    const { data: updated, error } = await query.select("id");
     if (error) throw error;
     if (!updated || updated.length === 0) continue; // มีคนแก้ก่อน -> ลองใหม่
 
@@ -138,12 +137,13 @@ async function fireRoom(roomId) {
 // ===== โควต้ารายวัน (ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน) =====
 // วันที่ 1..7 ต้องส่ง 3 / 5 / 7 / 8 / 9 / 10 / 12 ลูก — วันไหนไม่ครบ heat ต่อการส่งผิดขึ้น 1 ขั้น
 // 10 -> 20 -> 40 -> 80 -> 100 (ขึ้นอย่างเดียว ไม่ลด) · บอลแดงไม่นับ
-// เก็บใน DB (ไม่เพิ่มคอลัมน์): game_rooms.progress = จำนวนบอลเขียวของวันนี้ (ทุกคนเห็นเท่ากันผ่าน realtime)
-// game_rooms.difficulty = "q:<วัน (เริ่ม 0)>:<ขั้น heat>" (คอลัมน์เดิมไม่ได้ใช้)
+// เก็บใน game_rooms (ทุกคนเห็นเท่ากันผ่าน realtime):
+//   progress  = จำนวนบอลเขียวของวันนี้
+//   quota_day = วันที่ปิดบัญชีโควต้าล่าสุด (เริ่ม 0)
+//   heat_step = ขั้น heat ต่อการส่งผิด (index ของ HEAT_STEPS)
 const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12];
 const HEAT_STEPS = [10, 20, 40, 80, 100];
-const QUOTA_STATE_COLUMN = "difficulty";
-const ROOM_FIELDS = `status, mode, started_at, end_time, morning_time, noon_time, evening_time, day_count, progress, ${HEAT_COLUMN}, ${QUOTA_STATE_COLUMN}`;
+const ROOM_FIELDS = `status, mode, started_at, end_time, morning_time, noon_time, evening_time, day_count, progress, ${HEAT_COLUMN}, quota_day, heat_step`;
 
 // ===== Endless mode =====
 // ไม่มีวันจบ เล่นไปจนกว่า heat ถึง 100
@@ -176,13 +176,15 @@ async function quotaFor(roomId, room, day) {
   return Math.max(1, Math.round(perPlayer * players));
 }
 
-function parseQuotaState(value) {
-  const m = /^q:(\d+):(\d+)$/.exec(value || "");
-  return m ? { day: Number(m[1]), step: Number(m[2]) } : { day: 0, step: 0 };
+// ห้องที่ยังไม่เคยตั้งค่า (null) นับเป็นวันแรก ขั้นแรก
+function quotaState(room) {
+  return { day: Number(room?.quota_day) || 0, step: Number(room?.heat_step) || 0 };
 }
 
-function formatQuotaState(day, step) {
-  return `q:${day}:${step}`;
+// compare-and-swap: อัปเดตเฉพาะเมื่อยังเป็นวันเดิม (กันอีกคนปิดวันไปก่อน)
+// ค่า null ต้องใช้ .is() เพราะ .eq(null) ไม่ match แถวที่เป็น null
+function matchQuotaDay(query, room) {
+  return room.quota_day == null ? query.is("quota_day", null) : query.eq("quota_day", room.quota_day);
 }
 
 // วันที่เท่าไรแล้ว (เริ่ม 0) จากเวลาจบเกม (end_time) — ตรงกับ Day ใน Unity
@@ -202,13 +204,13 @@ function currentDayIndex(room) {
 }
 
 function heatPerWrong(room) {
-  const { step } = parseQuotaState(room?.[QUOTA_STATE_COLUMN]);
+  const { step } = quotaState(room);
   return HEAT_STEPS[Math.min(step, HEAT_STEPS.length - 1)];
 }
 
 // ข้อมูลโควต้าส่งให้หน้าเว็บ
 async function quotaInfo(roomId, room) {
-  const { day, step } = parseQuotaState(room?.[QUOTA_STATE_COLUMN]);
+  const { day, step } = quotaState(room);
   return {
     day,
     delivered: room?.progress ?? 0,
@@ -231,7 +233,7 @@ async function rollQuotaDays(roomId) {
     if (error) throw error;
     if (!room || room.status !== "playing") return room;
 
-    const state = parseQuotaState(room[QUOTA_STATE_COLUMN]);
+    const state = quotaState(room);
     const today = currentDayIndex(room);
     if (today <= state.day) return room;
 
@@ -253,15 +255,16 @@ async function rollQuotaDays(roomId) {
       step = Math.min(step + 1, maxStep);
     }
     const missed = met ? 0 : 1;
-    const next = formatQuotaState(today, step);
+    const next = { quota_day: today, heat_step: step };
 
-    const { data: updated, error: updErr } = await supabase
-      .from("game_rooms")
-      .update({ progress: 0, [QUOTA_STATE_COLUMN]: next })
-      .eq("id", roomId)
-      .eq("status", "playing")
-      .eq(QUOTA_STATE_COLUMN, room[QUOTA_STATE_COLUMN])
-      .select("id");
+    const { data: updated, error: updErr } = await matchQuotaDay(
+      supabase
+        .from("game_rooms")
+        .update({ progress: 0, ...next })
+        .eq("id", roomId)
+        .eq("status", "playing"),
+      room,
+    ).select("id");
     if (updErr) throw updErr;
     if (!updated || updated.length === 0) continue; // อีกคนปิดวันไปก่อนแล้ว -> อ่านใหม่
 
@@ -273,7 +276,7 @@ async function rollQuotaDays(roomId) {
     if (isEndless(room) && missedHeat > 0) {
       heat = await addRoomHeat(roomId, missedHeat, "missed daily quota");
     }
-    return { ...room, progress: 0, [QUOTA_STATE_COLUMN]: next, [HEAT_COLUMN]: heat };
+    return { ...room, progress: 0, ...next, [HEAT_COLUMN]: heat };
   }
   throw new Error("quota update conflict, please retry");
 }
@@ -285,14 +288,15 @@ async function addQuotaDelivery(roomId) {
     if (!room || room.status !== "playing") return room;
 
     const delivered = (room.progress ?? 0) + 1;
-    const { data: updated, error } = await supabase
-      .from("game_rooms")
-      .update({ progress: delivered })
-      .eq("id", roomId)
-      .eq("status", "playing")
-      .eq("progress", room.progress ?? 0)
-      .eq(QUOTA_STATE_COLUMN, room[QUOTA_STATE_COLUMN])
-      .select("id");
+    const { data: updated, error } = await matchQuotaDay(
+      supabase
+        .from("game_rooms")
+        .update({ progress: delivered })
+        .eq("id", roomId)
+        .eq("status", "playing")
+        .eq("progress", room.progress ?? 0),
+      room,
+    ).select("id");
     if (error) throw error;
     if (!updated || updated.length === 0) continue;
     return { ...room, progress: delivered };
@@ -342,7 +346,7 @@ router.post("/endgame/:roomId", requireAuth, async (req, res) => {
 
     const { data: room, error: roomError } = await supabase
       .from("game_rooms")
-      .select(`status, mode, started_at, end_time, morning_time, noon_time, evening_time, day_count, progress, duration_time, ${HEAT_COLUMN}, ${QUOTA_STATE_COLUMN}`)
+      .select(`status, mode, started_at, end_time, morning_time, noon_time, evening_time, day_count, progress, duration_time, ${HEAT_COLUMN}, quota_day, heat_step`)
       .eq("id", roomId)
       .single();
 
@@ -482,7 +486,7 @@ async function tryStartGame(roomId) {
     // เริ่มนับโควต้าวันที่ 1 (แยก update ไว้ ถ้าเขียนไม่ได้ เกมยังเริ่มได้ตามปกติ)
     const { error: quotaErr } = await supabase
       .from("game_rooms")
-      .update({ progress: 0, [QUOTA_STATE_COLUMN]: formatQuotaState(0, 0) })
+      .update({ progress: 0, quota_day: 0, heat_step: 0 })
       .eq("id", roomId);
     if (quotaErr) console.error("[quota] cannot reset quota state:", quotaErr.message);
   }
@@ -657,6 +661,79 @@ router.post("/ball-delivered", requireAuth, async (req, res) => {
     const room = color === "green" ? await addQuotaDelivery(roomId) : await rollQuotaDays(roomId);
     if (!room) return res.status(404).json({ error: "Room not found" });
     res.json(await quotaInfo(roomId, room));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/game/skip-day { roomId } — ส่งครบโควต้าวันนี้แล้ว ข้ามไปวันถัดไปเลย (ทั้งห้อง)
+// ไม่ได้เปลี่ยนความยาววัน แค่เลื่อนเวลาให้วันนี้จบตอนนี้: โหมดปกติดึง end_time เข้ามา / Endless ถอย started_at
+// ทุกเครื่องได้ end_time ใหม่ผ่าน realtime แล้วตั้งเวลา Unity ใหม่เอง · วันสุดท้าย = จบเกมตอนนี้เลย
+router.post("/skip-day", requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.body || {};
+    if (!roomId) return res.status(400).json({ error: "roomId is required" });
+
+    const { data: me, error: meErr } = await supabase
+      .from("room_players")
+      .select("player_id")
+      .eq("room_id", roomId)
+      .eq("player_id", req.user.id)
+      .maybeSingle();
+    if (meErr) throw meErr;
+    if (!me) return res.status(403).json({ error: "คุณไม่ได้อยู่ในห้องนี้" });
+
+    const room = await rollQuotaDays(roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+    if (room.status !== "playing") return res.status(409).json({ error: "เกมยังไม่เริ่มหรือจบไปแล้ว" });
+
+    const info = await quotaInfo(roomId, room);
+    if (info.delivered < info.quota) {
+      return res.status(409).json({ error: `ยังส่งไม่ครบโควต้า (${info.delivered}/${info.quota})` });
+    }
+
+    const dayMs =
+      ((room.morning_time || 0) + (room.noon_time || 0) + (room.evening_time || 0)) * 1000;
+    if (dayMs <= 0) return res.status(400).json({ error: "ห้องนี้ไม่มีเวลาต่อวัน" });
+
+    const now = Date.now();
+    let patch;
+    let finalDay = false;
+    let match; // compare-and-swap: กดพร้อมกันหลายคน ข้ามแค่วันเดียว
+    if (isEndless(room)) {
+      const startMs = new Date(room.started_at).getTime();
+      const skipMs = dayMs - ((now - startMs) % dayMs);
+      patch = { started_at: new Date(startMs - skipMs).toISOString() };
+      match = ["started_at", room.started_at];
+    } else {
+      const days = room.day_count || 1;
+      const endMs = new Date(room.end_time).getTime();
+      const elapsed = now - (endMs - dayMs * days);
+      const today = Math.floor(elapsed / dayMs);
+      finalDay = today >= days - 1;
+      const newEnd = finalDay ? now : endMs - ((today + 1) * dayMs - elapsed);
+      patch = { end_time: new Date(newEnd).toISOString() };
+      match = ["end_time", room.end_time];
+    }
+
+    const { data: updated, error: updErr } = await matchQuotaDay(
+      supabase
+        .from("game_rooms")
+        .update(patch)
+        .eq("id", roomId)
+        .eq("status", "playing")
+        .eq(match[0], match[1]),
+      room,
+    ).select("id");
+    if (updErr) throw updErr;
+    if (!updated || updated.length === 0) {
+      return res.status(409).json({ error: "มีคนกดข้ามวันไปแล้ว" });
+    }
+
+    console.log(`[quota] room ${roomId}: day ${info.day + 1} skipped by ${req.user.id}${finalDay ? " (final day -> game ends)" : ""}`);
+    // ปิดวันที่ข้ามทันที (ส่งครบแล้ว heat ไม่ขึ้น) แถบโควต้าทุกคนจะขึ้นวันใหม่เลย
+    const next = finalDay ? room : await rollQuotaDays(roomId);
+    res.json({ ok: true, finalDay, ...(await quotaInfo(roomId, next)) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
