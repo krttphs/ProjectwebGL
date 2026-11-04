@@ -706,8 +706,18 @@ document
 document.getElementById("lang").addEventListener("change", (e) => {
   if (currentQuest) fillSetupCode(currentQuest);
 });
+// กลับหน้า lobby: ถ้าเปิดอยู่ใน iframe ของหน้า landing ให้ส่งข้อความไปบอกหน้าแม่
+// (ห้ามใช้ location.href ตรงๆ เพราะจะโหลดหน้าซ้อนอยู่ใน iframe)
+function goBackToLobby() {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "BACK_TO_LOBBY" }, window.location.origin);
+  } else {
+    window.location.href = "/lobby"; // เปิดหน้านี้ตรงๆ ไม่ได้อยู่ใน iframe
+  }
+}
+
 function back() {
-  window.location.href = "/";
+  goBackToLobby();
 }
 // ประกาศฟังก์ชันให้ Global (window) เพื่อให้ Unity หาเจอ
 // --- Editor Open/Close State ---
@@ -1302,7 +1312,7 @@ async function leaveGame() {
     alert("ออกจากเกมไม่สำเร็จ");
     return;
   }
-  window.location.href = "/lobby";
+  goBackToLobby();
 }
 
 // Unity ส่งผลสรุปวันสุดท้ายมา (DailyAwards.cs ผ่าน WebGLBridge.jslib)
