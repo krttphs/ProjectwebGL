@@ -164,11 +164,6 @@ function setQuotaUI(info) {
 // server เลื่อน end_time ให้วันนี้จบตอนนี้ -> ทุกคนได้ end_time ใหม่ผ่าน realtime แล้วตั้งเวลา Unity ใหม่ (resyncTimer)
 async function skipDay() {
   const skipBtn = document.getElementById("skip-day-btn");
-  const finalDay = skipBtn.textContent.startsWith("Finish");
-  const question = finalDay
-    ? "จบเกมตอนนี้เลยไหม? (ทั้งห้องจะจบเกมด้วย)"
-    : "ข้ามไปวันถัดไปเลยไหม? (ทั้งห้องจะข้ามด้วย)";
-  if (!confirm(question)) return;
 
   skipBtn.disabled = true;
   try {
@@ -191,7 +186,19 @@ async function skipDay() {
   }
 }
 
-document.getElementById("skip-day-btn").addEventListener("click", skipDay);
+document.getElementById("skip-day-btn").addEventListener("click", showSkipDayConfirm);
+
+function showSkipDayConfirm() {
+  const finalDay = skipBtn.textContent.startsWith("Finish");
+  const question = finalDay
+    ? "จบเกมตอนนี้เลยไหม? (ทั้งห้องจะจบเกมด้วย)"
+    : "ข้ามไปวันถัดไปเลยไหม? (ทั้งห้องจะข้ามด้วย)";
+  document.getElementById("skip-text").textContent = question;
+  document.getElementById("skip-end-day-modal").style.display = "flex";
+}
+function hideSkipDayConfirm() {
+  document.getElementById("skip-end-day-modal").style.display = "none";
+}
 
 // แถวของ game_rooms จาก realtime -> ข้อมูลโควต้า
 function quotaInfoFromRow(row) {

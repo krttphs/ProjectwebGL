@@ -15,6 +15,16 @@
 </head>
 
 <body>
+  <div id="skip-end-day-modal" style="display: none; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div class="modal-content" style="background-color: #fcffcf; padding: 20px; border-radius: 8px; text-align: center; border: 2px solid #ff79c6; box-shadow: 0 0 30px rgba(255, 121, 198, 0.4);">
+      <h2>Skip to next day</h2>
+      <p id="skip-text">ข้ามไปวันถัดไปเลยไหม? (ทั้งห้องจะข้ามด้วย)</p>
+      <div class="modal-buttons">
+        <button id="confirm-skip-btn" onclick="skipDay()">ใช่, ข้ามเลย</button>
+        <button id="cancel-skip-btn" onclick="hideSkipDayConfirm()">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
   <!-- Game -->
     <button id="leave-game-btn" onclick="leaveGame()">
       Leave game
