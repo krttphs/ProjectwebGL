@@ -615,7 +615,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 document
   .getElementById("randomQuestBtn")
   .addEventListener("click", async () => {
-    if(myQuest) return alert("ต้องนำบอลไปส่งหัวหน้าก่อน!");
+    if(myQuest) return alert("ต้อง Report ไปส่งหัวหน้าก่อน!");
     try {
       let res = await fetch(`/api/game/quests/random`, {
         method: "POST",
