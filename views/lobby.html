@@ -14,6 +14,7 @@
     <script src="/js/supabaseBrowser.js"></script>
 
     <link rel="stylesheet" href="/css/lobby.css">
+    <link rel="stylesheet" href="/css/howto.css">
 
 </head>
 
@@ -73,7 +74,7 @@
             <article class="lb-card">
                 <div class="lb-thumb">
                     <img src="/img/mode-normal.svg" alt="ออฟฟิศยามค่ำคืน">
-                    <button class="lb-howto" onclick="howToPlayGM1()">
+                    <button class="lb-howto" onclick="openHowTo('normal')">
                         <i class="fa-solid fa-book-open"></i> How to play
                     </button>
                     <span class="lb-tag">WORK OFFICE</span>
@@ -95,7 +96,7 @@
             <article class="lb-card lb-endless">
                 <div class="lb-thumb">
                     <img src="/img/mode-endless.svg" alt="ห้อง Server ที่กำลังร้อน">
-                    <button class="lb-howto" onclick="howToPlayGM1()">
+                    <button class="lb-howto" onclick="openHowTo('endless')">
                         <i class="fa-solid fa-book-open"></i> How to play
                     </button>
                     <span class="lb-tag">ENDLESS</span>
@@ -445,6 +446,7 @@
 </div>
     </div>
     <script src="/js/lobby.js"></script>
+    <script src="/js/howto.js"></script>
 </body>
 
 </html>

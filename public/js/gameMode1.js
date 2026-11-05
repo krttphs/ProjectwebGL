@@ -1517,3 +1517,53 @@ updateMusicButton();
     true,
   ); // capture:true — ทำงานก่อน Unity listener
 });
+
+function openGameHowTo() {
+  if (editorOpen || terminalOpen) return; // เปิด editor/terminal อยู่ ไม่ให้เปิดทับ
+  if (document.pointerLockElement) document.exitPointerLock();
+  const unityCanvas = document.getElementById("unity-canvas");
+  if (unityCanvas) {
+    unityCanvas.style.pointerEvents = "none";
+    unityCanvas.blur();
+  }
+  // ในเกมข้ามขั้นสร้างห้องไปเลย: Work office เริ่มที่ "หาคอมของเรา", Endless เริ่มที่ "งานหนักขึ้นทุกวัน"
+  openHowTo(isEndlessGame ? "endless" : "normal", 2);
+}
+
+// ปิดคู่มือแล้วคืนเมาส์/คีย์บอร์ดให้ Unity (ยกเว้นตอนเปิด editor/terminal อยู่)
+window.onHowToClose = function () {
+  if (editorOpen || terminalOpen) return;
+  const unityCanvas = document.getElementById("unity-canvas");
+  if (unityCanvas) {
+    unityCanvas.style.pointerEvents = "";
+    if (!unityCanvas.hasAttribute("tabindex")) unityCanvas.tabIndex = -1;
+    unityCanvas.focus();
+  }
+};
+
+// ดักที่ window capture phase ก่อน Unity (แบบเดียวกับตัวดักคีย์ของ textarea)
+["keydown", "keypress", "keyup"].forEach((evtType) => {
+  window.addEventListener(
+    evtType,
+    (e) => {
+      // กำลังพิมพ์ในช่องไหนอยู่ ไม่ต้องสนใจปุ่ม M
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.code === "KeyM") {
+        e.stopImmediatePropagation();
+        if (evtType !== "keydown" || e.repeat) return;
+        if (isHowToOpen()) closeHowTo();
+        else openGameHowTo();
+        return;
+      }
+
+      // ระหว่างเปิดคู่มือ: ตัดคีย์ทั้งหมดไม่ให้ถึง Unity (ตัวละครไม่เดิน) แต่ยังใช้ ← → Esc ในคู่มือได้
+      if (isHowToOpen()) {
+        e.stopImmediatePropagation();
+        howtoKey(e);
+      }
+    },
+    true,
+  );
+});

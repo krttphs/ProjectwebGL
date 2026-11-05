@@ -1,0 +1,226 @@
+/* ===== คู่มือสอนเล่น ===== */
+.howto-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.howto-modal.open {
+    display: flex;
+}
+
+.howto-box {
+    width: 100%;
+    max-width: 960px;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 20px 24px 24px;
+    border-radius: 18px;
+    background: #0f172a;
+    border: 1px solid rgba(34, 211, 238, 0.35);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    color: #e2e8f0;
+    font-family: "Poppins", sans-serif;
+}
+
+.howto-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.howto-head h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #67e8f9;
+}
+
+.howto-modes {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    margin-right: 12px;
+}
+
+.howto-modes button {
+    padding: 4px 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.howto-modes button.active {
+    border-color: #22d3ee;
+    color: #67e8f9;
+}
+
+/* ป้าย M = คู่มือ ในเกม */
+#howto-hint {
+    position: fixed;
+    bottom: 110px;
+    right: 20px;
+    z-index: 99;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#howto-hint kbd {
+    padding: 0 6px;
+    margin-right: 4px;
+    border-radius: 4px;
+    background: #22d3ee;
+    color: #0f172a;
+    font-weight: 700;
+    font-family: inherit;
+}
+
+.howto-close {
+    font-size: 30px;
+    line-height: 1;
+    color: #94a3b8;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.howto-close:hover {
+    color: #fff;
+}
+
+.howto-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.howto-tabs button {
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid #334155;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+}
+
+.howto-tabs button.active {
+    background: #22d3ee;
+    border-color: #22d3ee;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.howto-img-wrap {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+}
+
+.howto-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.howto-count {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.howto-steps h3 {
+    margin-top: 14px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.howto-steps p {
+    margin-top: 4px;
+    min-height: 48px;
+    color: #cbd5e1;
+}
+
+.howto-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.howto-nav button {
+    padding: 8px 18px;
+    border-radius: 10px;
+    border: 0;
+    background: #22d3ee;
+    color: #0f172a;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.howto-nav button:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.howto-dots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+.howto-dots span {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #334155;
+    cursor: pointer;
+}
+
+.howto-dots span.on {
+    background: #22d3ee;
+}
+
+.howto-video #howto-video-box {
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+}
+
+.howto-video iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+.howto-empty {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+}

@@ -11,6 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabaseBrowser.js"></script>
   <link rel="stylesheet" href="/css/gameMode1.css">
+  <link rel="stylesheet" href="/css/howto.css">
 
 </head>
 
@@ -35,6 +36,8 @@
              background: rgba(0,0,0,0.6); color: white; cursor: pointer;">
       🔊 Music
     </button>
+    <!-- ป้ายบอกปุ่มคู่มือ (กดได้ด้วย) — gameMode1.js openGameHowTo -->
+    <button id="howto-hint" type="button" onclick="openGameHowTo()"><kbd>M</kbd>คู่มือ</button>
     <button
       id="toggle-editor-btn"
       style="display: none"
@@ -433,6 +436,7 @@
     >
       <h1>เพื่อนยังไม่เริ่มทำงาน ใจเย็นๆ</h1>
     </div>
+  <script src="/js/howto.js"></script>
   <script src="/js/gameMode1.js"></script>
 </body>
 
