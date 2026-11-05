@@ -190,7 +190,7 @@
         const modal = el("div", "ql-modal");
 
         const head = el("div", "ql-head");
-        head.appendChild(el("h2", "", "QUESTS · โจทย์ที่เคยทำ"));
+        head.appendChild(el("h2", "", "QUESTS"));
         const close = el("button", "ql-close", "✕");
         close.type = "button";
         close.title = "Close";
