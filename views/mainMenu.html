@@ -6,11 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OVERCODE GAME - MAIN MENU</title>
     <link rel="icon" type="image/png" href="/img/webIcon.png">
-
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
-
     <link rel="stylesheet" href="/css/mainMenu.css">
+    <link rel="stylesheet" href="/css/questlist.css">
 </head>
 
 <body style="font-family: 'Poppins', sans-serif;">
@@ -37,7 +36,7 @@
 
                     <button class="btn" onclick="goToRanking()">RANKING (แก้)</button>
 
-                    <button class="btn" onclick="goToQuest()">QUEST (แก้)</button>
+                    <button class="btn" data-open-quests>QUEST</button>
 
                     <button class="btn" id="adminBtn" onclick="goToAdmin()" hidden>ADMIN</button>
                 </div>
@@ -52,6 +51,7 @@
         </footer>
     </main>
 
+    <script src="/js/questlist.js"></script>
     <script src="/js/mainMenu.js"></script>
 
 </body>

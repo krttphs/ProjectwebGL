@@ -23,7 +23,7 @@ function wrongScore(quest) {
   return -Math.round(correctScore(quest) * wrongPenaltyRatio);
 }
 
-async function finishQuest(roomId, playerId, questId, delta) {
+async function finishQuest(roomId, playerId, questId, delta, result) {
   const { data, error } = await supabase.rpc("finish_quest", {
     p_room_id: roomId,
     p_player_id: playerId,
@@ -31,6 +31,20 @@ async function finishQuest(roomId, playerId, questId, delta) {
     p_delta: delta,
   });
   if (error) throw error;
+
+  // data = null แปลว่าโจทย์นี้ส่งไปแล้ว ไม่ต้องบันทึกซ้ำ (0 คะแนนยังถือว่าบันทึก)
+  if (data !== null) {
+    const { error: historyError } = await supabase
+      .from("player_quest_history")
+      .insert({
+        player_id: playerId,
+        quest_id: questId,
+        room_id: roomId,
+        result,
+        score_delta: delta,
+      });
+    if (historyError) console.error("save quest history error:", historyError);
+  }
   return data; // คะแนนใหม่ หรือ null ถ้าส่งไปแล้ว
 }
 
@@ -445,7 +459,7 @@ router.post("/ready", requireAuth, async (req, res) => {
 async function tryStartGame(roomId) {
   const { data: room, error: roomError } = await supabase
     .from("game_rooms")
-        .select("status, mode, morning_time, noon_time, evening_time, day_count")
+    .select("status, mode, morning_time, noon_time, evening_time, day_count")
     .eq("id", roomId)
     .single();
 
@@ -607,7 +621,6 @@ router.post("/giveup", requireAuth, async (req, res) => {
     if (!me?.current_quest_id) {
       return res.status(400).json({ error: "ไม่มีโจทย์ให้ยอมแพ้" });
     }
-
     // ดึง rewards ของโจทย์ เพื่อคิดคะแนนที่เสีย
     const { data: quest, error: questErr } = await supabase
       .from("quests")
@@ -616,7 +629,7 @@ router.post("/giveup", requireAuth, async (req, res) => {
       .single();
     if (questErr) throw questErr;
 
-    const score = await finishQuest(roomId, req.user.id, me.current_quest_id, wrongScore(quest));
+    const score = await finishQuest(roomId, req.user.id, me.current_quest_id, wrongScore(quest), "gave_up");
     if (score === null) {
       return res.status(409).json({ error: "โจทย์นี้จบไปแล้ว" });
     }
@@ -903,6 +916,7 @@ router.post("/submissions", requireAuth, async (req, res) => {
         req.user.id,
         owner.current_quest_id,
         success ? correctScore(quest) : wrongScore(quest),
+        success ? "passed" : "failed",
       );
       if (score === null) {
         return res.status(409).json({ error: "โจทย์นี้ถูกส่งไปแล้ว" });
@@ -925,10 +939,15 @@ router.post("/submissions", requireAuth, async (req, res) => {
       body: JSON.stringify({ source_code, language_id, stdin: stdin ?? "" }),
       signal: AbortSignal.timeout(90_000), // เผื่อ judge ตื่นจากหลับ
     });
-    if (!judgeRes.ok){
-      const j = await judgeRes.json().catch(() => ({}));
-      return res.status(judgeRes.status === 409 ? 409 : 502).json({ error: j.error || "judge error" });
-    }
+    if (!judgeRes.ok) {
+  const text = await judgeRes.text().catch(() => "");
+  console.error("JUDGE ERROR:", judgeRes.status, text.slice(0, 500));
+  let j = {};
+  try { j = JSON.parse(text); } catch {}
+  return res
+    .status(judgeRes.status === 409 ? 409 : 502)
+    .json({ error: j.error || `judge error (${judgeRes.status})` });
+}
     const r = await judgeRes.json();
 
     //คอมไพล์ไม่ผ่าน

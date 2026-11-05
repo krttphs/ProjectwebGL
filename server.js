@@ -36,6 +36,7 @@ app.use("/api/lobby", lobbyRoutes);
 app.use("/api/game", gameRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/quests", requireAuth, require("./routes/quests"));
 // Frontend Route 
 // Frontend Route 
 app.get("/", (req, res) => {
