@@ -100,8 +100,11 @@ h1 span {
 
 .buttons {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto
 }
 
 .btn {
@@ -125,7 +128,6 @@ h1 span {
 .btn.play {
     background: #2f7ff2;
     color: #fff;
-    grid-column: 1 / -1;
 }
 
 .logout {
@@ -169,10 +171,6 @@ footer {
     .content {
         min-height: auto;
         padding: 45px 25px
-    }
-
-    .buttons {
-        grid-template-columns: 1fr
     }
 
     .shape-one {
