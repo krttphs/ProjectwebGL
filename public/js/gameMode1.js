@@ -189,6 +189,7 @@ async function skipDay() {
 document.getElementById("skip-day-btn").addEventListener("click", showSkipDayConfirm);
 
 function showSkipDayConfirm() {
+  const skipBtn = document.getElementById("skip-day-btn");
   const finalDay = skipBtn.textContent.startsWith("Finish");
   const question = finalDay
     ? "จบเกมตอนนี้เลยไหม? (ทั้งห้องจะจบเกมด้วย)"
