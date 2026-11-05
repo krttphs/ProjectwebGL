@@ -117,6 +117,7 @@ async function addRoomHeat(roomId, amount, reason) {
   }
   throw new Error("heat update conflict, please retry");
 }
+// แทนที่ฟังก์ชัน fireRoom เดิมใน routes/game.js ทั้งฟังก์ชัน และเพิ่ม saveEndlessRecord ต่อท้าย
 
 async function fireRoom(roomId) {
   const { data: room, error } = await supabase
@@ -139,13 +140,46 @@ async function fireRoom(roomId) {
     played = Math.max(0, Math.round(total - remaining));
   }
 
-  const { error: updErr } = await supabase
+  const { data: closedRows, error: updErr } = await supabase
     .from("game_rooms")
     .update({ status: "finished", duration_time: played })
     .eq("id", roomId)
-    .eq("status", "playing");
+    .eq("status", "playing")
+    .select("id"); // รู้ว่าเราเป็นคนปิดห้องจริงหรือไม่ (กันบันทึกสถิติซ้ำ)
   if (updErr) throw updErr;
+
+  // Endless: บันทึกสถิติลง Ranking (เฉพาะครั้งที่เราเป็นคนปิดห้อง)
+  if (isEndless(room) && closedRows && closedRows.length > 0) {
+    await saveEndlessRecord(roomId, room, played);
+  }
+
   console.log(`[heat] room ${roomId}: SERVER OVERHEAT -> game over (fired) after ${played}s`);
+}
+
+// เก็บสถิติ Endless 1 รอบ: อยู่รอดกี่วินาที / กี่วัน / ใครอยู่ในห้องตอนจบ
+// ถ้าบันทึกไม่สำเร็จแค่ log ไว้ ไม่ทำให้การจบเกมพัง
+async function saveEndlessRecord(roomId, room, playedSeconds) {
+  try {
+    const { data: players, error: playersErr } = await supabase
+      .from("room_players")
+      .select("player_id")
+      .eq("room_id", roomId);
+    if (playersErr) throw playersErr;
+
+    const dayLength = (room.morning_time || 0) + (room.noon_time || 0) + (room.evening_time || 0);
+    const { error } = await supabase.from("endless_records").upsert(
+      {
+        room_id: roomId,
+        duration_time: playedSeconds,
+        days_survived: dayLength > 0 ? Math.floor(playedSeconds / dayLength) : 0,
+        player_ids: (players || []).map((p) => p.player_id),
+      },
+      { onConflict: "room_id", ignoreDuplicates: true },
+    );
+    if (error) throw error;
+  } catch (err) {
+    console.error("save endless record error:", err);
+  }
 }
 
 // ===== โควต้ารายวัน (ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน) =====
