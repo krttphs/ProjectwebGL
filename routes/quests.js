@@ -8,7 +8,7 @@ const HISTORY_TABLE = "player_quest_history";
 // เลือกเฉพาะคอลัมน์ที่หน้าเว็บต้องใช้ — ห้ามใช้ select("*")
 // เพราะตาราง quests มี input_submit / expected_output (คำตอบจริง) ที่ผู้เล่นไม่ควรเห็น
 const QUEST_COLUMNS =
-    "title, description, input_run, show_expect_output, level, rewards, is_active, setup_code";
+    "id, title, description, input_run, show_expect_output, level, rewards, is_active, setup_code";
 
 // GET /api/quests : เฉพาะโจทย์ที่ผู้เล่นที่ล็อกอินอยู่เคยทำ (route นี้ต้องผ่าน requireAuth)
 router.get("/", async (req, res) => {
