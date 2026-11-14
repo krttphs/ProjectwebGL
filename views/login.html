@@ -206,6 +206,45 @@
         transform: scale(1);
       }
     }
+
+    /* กล่องข้อความแจ้งเตือนแทน alert (ลอยเหนือกล่อง login/register) */
+    .form-msg {
+      position: absolute;
+      bottom: calc(100% + 10px); /* ลอยอยู่เหนือกล่อง ไม่ทับฟอร์ม */
+      left: 0;
+      right: 0;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      z-index: 30;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.35;
+      color: #fff;
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .form-msg.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .form-msg.error {
+      background: #dc2626;
+    }
+
+    .form-msg.success {
+      background: #16a34a;
+    }
+
+    /* ช่องที่กรอกผิด -> ขอบแดง */
+    .input-error {
+      outline: 2px solid #f87171;
+      outline-offset: 1px;
+    }
   </style>
 </head>
 
@@ -233,6 +272,8 @@
         id="registerClose"
         class="hidden absolute right-2 top-2 text-white text-3xl leading-none hover:text-red-400 hover:scale-110 transition-all z-30"
         aria-label="Close Register">×</button>
+
+      <div id="formMsg" class="form-msg" role="alert" aria-live="polite"></div>
 
       <form id="loginForm" class="flex flex-col px-8">
         <h2 class="text-white text-xl mb-4 text-center">Login</h2>
@@ -299,6 +340,36 @@
   </main>
   </div>
   <script>
+    // --- กล่องข้อความแจ้งเตือน (ใช้แทน alert) ---
+    let msgTimer = null;
+
+    // type: "error" (แดง) | "success" (เขียว), inputId: ช่องที่ผิด (ขอบแดง + focus)
+    function showMsg(text, type = "error", inputId = null) {
+      const box = document.getElementById("formMsg");
+      clearMsg();
+      box.textContent = text;
+      box.classList.add("show", type);
+      if (inputId) {
+        const input = document.getElementById(inputId);
+        input.classList.add("input-error");
+        input.focus();
+      }
+      // ข้อความหายเองใน 4 วิ
+      msgTimer = setTimeout(() => box.classList.remove("show"), 4000);
+    }
+
+    function clearMsg() {
+      const box = document.getElementById("formMsg");
+      clearTimeout(msgTimer);
+      box.classList.remove("show", "error", "success");
+      document.querySelectorAll(".input-error").forEach((el) => el.classList.remove("input-error"));
+    }
+
+    // เริ่มพิมพ์แก้ช่องที่ผิด -> เอาขอบแดงออก
+    document.addEventListener("input", (e) => {
+      if (e.target.classList.contains("input-error")) e.target.classList.remove("input-error");
+    });
+
     // --- UI Functions ---
     function togglePass(password, button, confirmPassword) {
       const pass = document.getElementById(password);
@@ -320,6 +391,7 @@
     }
 
     function showRegister() {
+      clearMsg();
       document.getElementById("registerClose").classList.remove("hidden");
       document.getElementById("loginForm").classList.add("hidden");
       document.getElementById("loginForm").classList.remove("flex");
@@ -334,6 +406,7 @@
     }
 
     function cancelRegister() {
+      clearMsg();
       document.getElementById("registerClose").classList.add("hidden");
       document.getElementById("registerForm").classList.add("hidden");
       document.getElementById("registerForm").classList.remove("flex");
@@ -376,21 +449,26 @@
       const emailRex = /^(?!\.)(?!.*\.\.)[a-zA-Z0-9._%+-]+(?<!\.)@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
       if (!email) {
-        alert("กรุณากรอก Email");
+        showMsg("กรุณากรอก Email", "error", "emailRegist");
         return;
       }
       else if (!emailRex.test(email)) {
-        alert("รูปแบบ Email ไม่ถูกต้อง")
+        showMsg("รูปแบบ Email ไม่ถูกต้อง", "error", "emailRegist");
         return
       }
       if (!password) {
-        alert("กรุณากรอก Password")
+        showMsg("กรุณากรอก Password", "error", "passwordRegist");
+        return
+      }
+      else if (password.length < 6) {
+        showMsg("Password ต้องมีอย่างน้อย 6 ตัวอักษร", "error", "passwordRegist");
         return
       }
       else if (password !== confirmPassword) {
-        alert("รหัสผ่านไม่ตรงกัน");
+        showMsg("รหัสผ่านไม่ตรงกัน", "error", "confirmpasswordRegist");
         return;
       }
+      clearMsg();
       tempEmail = email
       tempPassword = password
 
@@ -407,6 +485,7 @@
       })
     }
     function backToRegist() {
+      clearMsg();
       document.getElementById("registerClose").classList.remove("hidden");
       const registerForm = document.getElementById("registerForm")
       const usernameForm = document.getElementById("usernameForm")
@@ -440,11 +519,11 @@
         if (response.ok) {
           window.location.reload();
         } else {
-          alert("Login ผิดพลาด: " + result.error);
+          showMsg("Login ผิดพลาด: " + result.error, "error", "passwordInput");
         }
       } catch (err) {
         console.error(err);
-        alert("Server Error");
+        showMsg("เชื่อมต่อ server ไม่ได้ ลองใหม่อีกครั้ง");
       }
     });
 
@@ -452,27 +531,37 @@
     document.getElementById("usernameForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const username = document.getElementById("username").value.trim()
-      if (!tempEmail || !tempPassword || !username) {
-        alert("กรุณากรอกข้อมูลให้ครบถ้วน")
+      if (!username) {
+        showMsg("กรุณากรอกชื่อผู้ใช้", "error", "username");
         return
       }
+      if (!tempEmail || !tempPassword) {
+        showMsg("ข้อมูลสมัครไม่ครบ กด Back แล้วกรอกใหม่อีกครั้ง");
+        return
+      }
+      const confirmBtn = e.target.querySelector('button[type="submit"]');
+      confirmBtn.disabled = true; // กันกดยืนยันซ้ำระหว่างรอ server
       try {
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tempEmail, tempPassword, username }),
         });
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
 
         if (response.ok) {
-          alert("สมัครสมาชิกสำเร็จ!");
-          successfullyRegistered()
+          successfullyRegistered();
+          showMsg("สมัครสมาชิกสำเร็จ! เข้าสู่ระบบได้เลย", "success");
         } else {
-          alert("สมัครสมาชิกไม่สำเร็จ: " + result.error);
+          // ชื่อซ้ำ -> ชี้ที่ช่อง username / อย่างอื่น (เช่น Email ซ้ำ) แสดงข้อความอย่างเดียว
+          const isUsername = (result.error || "").includes("Username");
+          showMsg("สมัครสมาชิกไม่สำเร็จ: " + (result.error || response.status), "error", isUsername ? "username" : null);
         }
       } catch (err) {
         console.error(err);
-        alert("Server Error");
+        showMsg("เชื่อมต่อ server ไม่ได้ ลองใหม่อีกครั้ง");
+      } finally {
+        confirmBtn.disabled = false;
       }
     });
   </script>

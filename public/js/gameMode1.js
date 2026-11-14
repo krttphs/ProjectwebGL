@@ -1300,10 +1300,44 @@ function setupCodeSync(roomId, computerId, isMine) {
   part3.oninput = broadcastCode;
 }
 
-// ออกจากเกมกลางคัน -> กลับหน้า lobby (คนสุดท้ายออก ห้องจะถูกปิด)
-async function leaveGame() {
+// ===== ออกจากเกม: ใช้ modal (#leave-game-modal ใน gameMode1.html) แทน confirm / alert =====
+
+// ปุ่ม Leave game -> เปิดหน้าต่างยืนยัน
+function leaveGame() {
   if (document.pointerLockElement) document.exitPointerLock();
-  if (!confirm("ออกจากเกมนี้? คะแนนและรางวัลของเกมนี้จะไม่ได้รับ")) return;
+  showLeaveConfirm();
+}
+
+function showLeaveConfirm() {
+  document.getElementById("leave-game-modal").style.display = "flex";
+  setLeaveError("");
+  setLeaveBusy(false);
+  document.getElementById("cancel-leave-btn").focus();
+}
+
+function hideLeaveConfirm() {
+  document.getElementById("leave-game-modal").style.display = "none";
+}
+
+// ข้อความ error สีแดงในหน้าต่าง ("" = ซ่อน)
+function setLeaveError(text) {
+  const el = document.getElementById("leave-error");
+  el.textContent = text;
+  el.style.display = text ? "block" : "none";
+}
+
+// ระหว่างรอ server: ปิดปุ่มไว้ กันกดซ้ำ
+function setLeaveBusy(busy) {
+  const confirmBtn = document.getElementById("confirm-leave-btn");
+  confirmBtn.disabled = busy;
+  document.getElementById("cancel-leave-btn").disabled = busy;
+  confirmBtn.textContent = busy ? "กำลังออก..." : "ออกจากเกม";
+}
+
+// กด "ออกจากเกม" ในหน้าต่าง -> แจ้ง server แล้วกลับ lobby (คนสุดท้ายออก ห้องจะถูกปิด)
+async function confirmLeaveGame() {
+  setLeaveError("");
+  setLeaveBusy(true);
   try {
     const res = await fetch("/api/lobby/leave", {
       method: "DELETE",
@@ -1312,16 +1346,32 @@ async function leaveGame() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      alert("ออกจากเกมไม่สำเร็จ: " + (data.error || res.status));
+      setLeaveError("ออกจากเกมไม่สำเร็จ: " + (data.error || res.status));
+      setLeaveBusy(false);
       return;
     }
   } catch (err) {
     console.error("Unable to leave the game: ", err);
-    alert("ออกจากเกมไม่สำเร็จ");
+    setLeaveError("เชื่อมต่อ server ไม่ได้ ลองใหม่อีกครั้ง");
+    setLeaveBusy(false);
     return;
   }
   goBackToLobby();
 }
+
+// กด Esc ตอนหน้าต่างเปิดอยู่ = เล่นต่อ (ดักก่อน Unity ไม่ให้ปุ่มไปถึงเกม)
+window.addEventListener(
+  "keydown",
+  (e) => {
+    const modal = document.getElementById("leave-game-modal");
+    if (!modal || modal.style.display !== "flex") return;
+    if (e.key === "Escape") {
+      e.stopImmediatePropagation();
+      hideLeaveConfirm();
+    }
+  },
+  true,
+);
 
 // Unity ส่งผลสรุปวันสุดท้ายมา (DailyAwards.cs ผ่าน WebGLBridge.jslib)
 // { day, outcome: "awards"|"solo"|"tie"|"none", tieScore, employees:[{name,score}], slackers:[...] }

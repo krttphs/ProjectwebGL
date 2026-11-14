@@ -26,6 +26,18 @@
       </div>
     </div>
   </div>
+  <!-- ยืนยันออกจากเกม (แทน confirm / alert) — gameMode1.js leaveGame / confirmLeaveGame -->
+  <div id="leave-game-modal" style="display: none; width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div class="modal-content" style="background-color: #fcffcf; padding: 20px; border-radius: 8px; text-align: center; border: 2px solid #ff5555; box-shadow: 0 0 30px rgba(255, 85, 85, 0.4); max-width: 360px;">
+      <h2>Leave game</h2>
+      <p>ออกจากเกมนี้? คะแนนและรางวัลของเกมนี้จะไม่ได้รับ</p>
+      <p id="leave-error" style="display: none; color: #fff; background: #dc2626; padding: 6px 10px; border-radius: 6px; font-size: 14px;"></p>
+      <div class="modal-buttons">
+        <button id="confirm-leave-btn" onclick="confirmLeaveGame()">ออกจากเกม</button>
+        <button id="cancel-leave-btn" onclick="hideLeaveConfirm()">เล่นต่อ</button>
+      </div>
+    </div>
+  </div>
   <!-- Game -->
     <button id="leave-game-btn" onclick="leaveGame()">
       Leave game
