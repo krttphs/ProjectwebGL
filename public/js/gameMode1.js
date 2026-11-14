@@ -1463,7 +1463,7 @@ try {
 } catch (e) {}
 
 function updateMusicButton() {
-  document.getElementById("music-btn").textContent = musicOn ? "🔊 Music" : "🔇 Music";
+  document.getElementById("music-label").textContent = musicOn ? "🔊 Music" : "🔇 Music";
 }
 
 function startBgm() {
@@ -1558,7 +1558,14 @@ window.onHowToClose = function () {
         return;
       }
 
-      // ระหว่างเปิดคู่มือ: ตัดคีย์ทั้งหมดไม่ให้ถึง Unity (ตัวละครไม่เดิน) แต่ยังใช้ ← → Esc ในคู่มือได้
+      if(e.code === "KeyL"){
+        e.stopImmediatePropagation();
+        if (evtType !== "keydown" || e.repeat) return;
+        toggleMusic();
+        return;
+      }
+
+      // ระหว่างเปิดคู่มือ ตัดคีย์ทั้งหมดไม่ให้ถึง Unity (ตัวละครไม่เดิน) แต่ยังใช้ ← → Esc ในคู่มือได้
       if (isHowToOpen()) {
         e.stopImmediatePropagation();
         howtoKey(e);

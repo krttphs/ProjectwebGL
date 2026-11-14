@@ -88,6 +88,16 @@
     font-family: inherit;
 }
 
+#music-btn kbd{
+    padding: 0 6px;
+    margin-right: 4px;
+    border-radius: 4px;
+    background: #22d3ee;
+    color: #0f172a;
+    font-weight: 700;
+    font-family: inherit;
+}
+
 .howto-close {
     font-size: 30px;
     line-height: 1;
