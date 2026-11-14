@@ -348,6 +348,12 @@
     }
 
     function successfullyRegistered() {
+      document.getElementById("emailRegist").value = "";
+      document.getElementById("passwordRegist").value = "";
+      document.getElementById("confirmpasswordRegist").value = "";
+      document.getElementById("username").value = "";
+      tempEmail = "";
+      tempPassword = "";
       document.getElementById("registerClose").classList.add("hidden");
       document.getElementById("usernameForm").classList.remove("flex")
       document.getElementById("usernameForm").classList.add("hidden")
@@ -364,7 +370,6 @@
     let tempEmail = ""
     let tempPassword = ""
     function nextToUsername() {
-      document.getElementById("registerClose").classList.add("hidden");
       const email = document.getElementById("emailRegist").value.trim();
       const password = document.getElementById("passwordRegist").value.trim();
       const confirmPassword = document.getElementById("confirmpasswordRegist").value.trim();
@@ -379,7 +384,7 @@
         return
       }
       if (!password) {
-        alert("กรอกรุณากรอก Password")
+        alert("กรุณากรอก Password")
         return
       }
       else if (password !== confirmPassword) {
@@ -388,6 +393,8 @@
       }
       tempEmail = email
       tempPassword = password
+
+      document.getElementById("registerClose").classList.add("hidden");
 
       document.getElementById("registerForm").classList.remove("flex")
       document.getElementById("registerForm").classList.add("hidden")
