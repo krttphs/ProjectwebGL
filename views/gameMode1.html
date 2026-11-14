@@ -21,8 +21,8 @@
       <h2>Skip to next day</h2>
       <p id="skip-text">ข้ามไปวันถัดไปเลยไหม? (ทั้งห้องจะข้ามด้วย)</p>
       <div class="modal-buttons">
-        <button id="confirm-skip-btn" onclick="skipDay()">ใช่, ข้ามเลย</button>
-        <button id="cancel-skip-btn" onclick="hideSkipDayConfirm()">ยกเลิก</button>
+        <button id="confirm-skip-btn" onclick="skipDay()">ใช่, ข้ามเลย [Y]</button>
+        <button id="cancel-skip-btn" onclick="hideSkipDayConfirm()">ยกเลิก [N]</button>
       </div>
     </div>
   </div>
@@ -85,7 +85,7 @@
           <div id="progress-bar-full"></div>
         </div>
         <!-- ส่งครบโควต้าแล้ว ข้ามไปวันถัดไปได้ (ทั้งห้อง) — gameMode1.js skipDay -->
-        <button id="skip-day-btn" type="button" hidden>Skip to next day ⏭</button>
+        <button id="skip-day-btn" type="button" hidden>Skip to next day ⏭ [K]</button>
       </div>
       <!-- แถบ Server Heat อยู่ใน HUD ของ Unity (ServerHeatFX.cs) ใต้กล่อง Day/เวลา -->
       <!-- ป้ายเตือน heat: ≥70% สีส้ม / 100% overheat สีแดง (gameMode1.js setHeatUI) -->

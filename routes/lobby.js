@@ -220,7 +220,8 @@ async function dissolveOpenRoom(roomId) {
 }
 
 // ปิดเกมที่ไม่เหลือใครแล้ว (เก็บห้องไว้เป็นประวัติ แค่เปลี่ยนเป็น finished)
-async function closeEmptyGame(roomId) {
+async function closeEmptyGame(roomId, reason) {
+  console.log(`[room] closing game ${roomId}: ${reason}`);
   await supabase
     .from("game_rooms")
     .update({ status: "finished" })
@@ -262,9 +263,10 @@ async function sweepAbandonedRooms() {
     );
     if (someoneHere) continue;
 
-    console.log(`Dissolving abandoned room ${room.id} (${room.status})`);
+    const lastSeen = roomPlayers.map((p) => `${p.player_id.slice(0, 8)}:${Math.round((now - seen.get(p.player_id)) / 1000)}s`);
+    console.log(`Dissolving abandoned room ${room.id} (${room.status}) players=${roomPlayers.length} lastSeen=[${lastSeen.join(", ")}]`);
     if (OPEN_STATUSES.includes(room.status)) await dissolveOpenRoom(room.id);
-    else await closeEmptyGame(room.id);
+    else await closeEmptyGame(room.id, "no heartbeat from anyone");
   }
 }
 
@@ -417,7 +419,7 @@ router.delete("/leave", requireAuth, async (req, res) => {
 
       // คนสุดท้ายออก -> ปิดห้อง ไม่ให้ค้างกินโควต้า
       if ((await countPlayers(roomId)) === 0) {
-        await closeEmptyGame(roomId);
+        await closeEmptyGame(roomId, `last player ${userId.slice(0, 8)} left`);
       } else if (room.status === "loading") {
         // คนที่ออกอาจเป็นคนเดียวที่ยังไม่ ready -> คนที่เหลือเริ่มเกมได้เลย
         await tryStartGame(roomId);

@@ -135,9 +135,8 @@ window.addEventListener("resize", () => {
 let PROGRESS_INCREMENT_DECREMENT = 0;
 
 // ===== Progress = โควต้ารายวันของทั้งห้อง =====
-// ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน (3 / 5 / 7 / 8 / 9 / 10 / 12) — ไม่ครบ -> heat ต่อการส่งผิดขึ้นขั้น
-// ค่าอยู่ใน DB (routes/game.js) -> ทุกคนเห็นเท่ากัน: ได้ทันทีผ่าน realtime ของ game_rooms + poll /heat สำรอง
-const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12]; // ตรงกับ routes/game.js
+
+const DAILY_QUOTA = [1, 2, 4, 4, 5, 5, 6]; // ตรงกับ routes/game.js
 const HEAT_STEPS = [10, 20, 40, 80, 100];
 
 function setQuotaUI(info) {
@@ -157,15 +156,19 @@ function setQuotaUI(info) {
   const skipBtn = document.getElementById("skip-day-btn");
   const finalDay = !isEndlessGame && info.day + 1 >= gameDayCount;
   skipBtn.hidden = !met || isGameEnded;
-  skipBtn.textContent = finalDay ? "Finish the game now ⏭" : "Skip to next day ⏭";
+  skipBtn.textContent = finalDay ? "Finish the game now ⏭ [K]" : "Skip to next day ⏭ [K]";
 }
 
 // ===== ข้ามวัน =====
 // server เลื่อน end_time ให้วันนี้จบตอนนี้ -> ทุกคนได้ end_time ใหม่ผ่าน realtime แล้วตั้งเวลา Unity ใหม่ (resyncTimer)
 async function skipDay() {
   const skipBtn = document.getElementById("skip-day-btn");
+  const confirmBtn = document.getElementById("confirm-skip-btn");
+  if (confirmBtn.disabled) return; // กันกดยืนยันซ้ำระหว่างรอ server
 
+  hideSkipDayConfirm(); // กดยืนยันแล้วปิดหน้าต่างทันที ไม่ต้องรอ server
   skipBtn.disabled = true;
+  confirmBtn.disabled = true;
   try {
     const res = await fetch("/api/game/skip-day", {
       method: "POST",
@@ -183,6 +186,7 @@ async function skipDay() {
     console.error("skip-day error:", err);
   } finally {
     skipBtn.disabled = false;
+    confirmBtn.disabled = false;
   }
 }
 
@@ -199,6 +203,9 @@ function showSkipDayConfirm() {
 }
 function hideSkipDayConfirm() {
   document.getElementById("skip-end-day-modal").style.display = "none";
+}
+function isSkipDayConfirmOpen() {
+  return document.getElementById("skip-end-day-modal").style.display === "flex";
 }
 
 // แถวของ game_rooms จาก realtime -> ข้อมูลโควต้า
@@ -1599,6 +1606,31 @@ window.onHowToClose = function () {
       // กำลังพิมพ์ในช่องไหนอยู่ ไม่ต้องสนใจปุ่ม M
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      // หน้าต่างยืนยันข้ามวันเปิดอยู่: Y / Enter = ข้าม, N / Esc = ยกเลิก (ตอบได้โดยไม่ต้องปลดเมาส์)
+      // ตัดคีย์ทั้งหมดไม่ให้ถึง Unity ระหว่างนี้ ตัวละครจะได้ไม่เดินตอนกดตอบ
+      if (isSkipDayConfirmOpen()) {
+        e.stopImmediatePropagation();
+        if (evtType !== "keydown" || e.repeat) return;
+        if (e.code === "KeyY" || e.code === "Enter" || e.code === "NumpadEnter") {
+          e.preventDefault();
+          skipDay();
+        } else if (e.code === "KeyN" || e.code === "Escape") {
+          e.preventDefault();
+          hideSkipDayConfirm();
+        }
+        return;
+      }
+
+      // K = เปิดหน้าต่างข้ามวัน (ทำได้เฉพาะตอนปุ่ม Skip โชว์อยู่ คือส่งครบโควต้าแล้ว) ไม่ต้องกด Esc ปลดเมาส์ก่อน
+      if (e.code === "KeyK") {
+        const skipBtn = document.getElementById("skip-day-btn");
+        if (skipBtn.hidden || skipBtn.disabled || editorOpen || terminalOpen || isHowToOpen()) return;
+        e.stopImmediatePropagation();
+        if (evtType !== "keydown" || e.repeat) return;
+        showSkipDayConfirm();
+        return;
+      }
 
       if (e.code === "KeyM") {
         e.stopImmediatePropagation();

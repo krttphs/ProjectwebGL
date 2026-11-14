@@ -183,19 +183,12 @@ async function saveEndlessRecord(roomId, room, playedSeconds) {
 }
 
 // ===== โควต้ารายวัน (ทั้งห้องต้องส่งบอลเขียวให้ NPC ให้ครบในแต่ละวัน) =====
-// วันที่ 1..7 ต้องส่ง 3 / 5 / 7 / 8 / 9 / 10 / 12 ลูก — วันไหนไม่ครบ heat ต่อการส่งผิดขึ้น 1 ขั้น
-// 10 -> 20 -> 40 -> 80 -> 100 (ขึ้นอย่างเดียว ไม่ลด) · บอลแดงไม่นับ
-// เก็บใน game_rooms (ทุกคนเห็นเท่ากันผ่าน realtime):
-//   progress  = จำนวนบอลเขียวของวันนี้
-//   quota_day = วันที่ปิดบัญชีโควต้าล่าสุด (เริ่ม 0)
-//   heat_step = ขั้น heat ต่อการส่งผิด (index ของ HEAT_STEPS)
-const DAILY_QUOTA = [3, 5, 7, 8, 9, 10, 12];
+const DAILY_QUOTA = [1, 2, 4, 4, 5, 5, 6];
 const HEAT_STEPS = [10, 20, 40, 80, 100];
 const ROOM_FIELDS = `status, mode, started_at, end_time, morning_time, noon_time, evening_time, day_count, progress, ${HEAT_COLUMN}, quota_day, heat_step`;
 
 // ===== Endless mode =====
-// ไม่มีวันจบ เล่นไปจนกว่า heat ถึง 100
-// โควต้าคิดต่อคน: วันแรก 1 ลูก/คน เพิ่มวันละ 0.25 จนถึง 2 ลูก/คน แล้วคูณจำนวนคนในห้อง
+
 const ENDLESS_QUOTA_START = 1;
 const ENDLESS_QUOTA_PER_DAY = 0.25;
 const ENDLESS_QUOTA_MAX = 2;
